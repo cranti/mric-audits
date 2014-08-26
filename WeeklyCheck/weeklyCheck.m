@@ -1,148 +1,164 @@
-%WEEKLYCHECK This function can be used to run basic audits on the
-%   MRIC database for a specified date range and save a csv summary.
+function weeklyCheck(startdate,enddate)
+%WEEKLYCHECK Runs ETL weekly audits on the MRIC database for a 
+% specified date range and saves a csv summary.
 %
 % INPUTS:
-%       startdate (string) - Beginning of the date range for the query (YYYY-MM-DD)
-%       enddate (string) - End of the date range for the query (YYYY-MM-DD)
+%       startdate (str) - Beginning of date range for the query (YYYY-MM-DD)
+%       enddate (str) - End of date range for the query (YYYY-MM-DD)
 %
-% This script uses processAuditQuery and processPhaseQuery to run a set of 
-% queries for the date range specified in the inputs and process the 
-% output. This script produces summaries of the data, to facilitate our
-% (roughly) weekly checks/data audits.
+% This script uses weeklyCheckQuery.py to run two queries for the date
+% range specified in the inputs and produces a summary of the data, to
+% facilitate the fellows' (roughly) weekly checks/data audits.
 %
 % Saves a csv file in a directory specified in the script. The csv contains
 % the following information:
-%   - Date range of the MRIC query
-%   - Summary of the sessions run in the date range & their qualities,
-%   broken up by 1) lab (age range) and 2) binned age
-%   - A list of all the sessions run and the dates that they were run on
-%   (in the date range), split up by lab (to facilitate checking against
-%   paper checklists)
-%   - A list of any issues with the phases of individuals who were
-%   compensated in the date range.
+%       - Date that query was run
+%       - Date range of query
+%       - Summary of the sessions run in the date range & their qualities,
+%       broken up by lab (age range) and binned age
+%       - A list of issues found by comparing session table and requirements
+%       table (SEE NOTES)
+%       - A list of all sessions (date of session, matlab id/sess #, fellows)
 %
-% Notes:
-%   > Needs: processAuditQuery.m, processPhaseQuery.m, dataquery.py (V5)
-%   > if the query has been run and/or the summary already exists, the
+% The directory is named by date range, and it contains the query results
+% (as csv files, output by the Python script) and the processed results
+% (saved as a mat file), as well as the summary csv.
+%
+% NOTES:
+%   > INFO ABOUT ERROR CHECKING: False positives are possible in the error
+%   checking process. The most common occurs when a two day ET session
+%   has been run, and the query range only includes one of the days.
+%   Because of the structure of the queries, the script will print that
+%   a session hasn't been uploaded and/or it hasn't been phase edited
+%   properly. To check if this is the case, you can look at the dates of
+%   the session, or look in the database (in session table and phase
+%   editor) to make sure that everything looks good.
+%
+%   > If the query has been run and/or the summary already exists, the
 %   user will be asked whether they want to overwrite those files.
 %
-% EDIT: add phase check that will make sure dates in session match the
-% phase completion date
+%   > The script prints where results have been saved to the command line.
 %
-% Possible future edits:
+%   > For initial set up (i.e. when running on a new computer), change the
+%   variable pythonDir (dir where weeklyCheckQuery.py is saved) and
+%   baseResultsDir (where a subdir will be created with all of the results)
+%
+%
+% See also READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC
+
+% POSSIBLE FUTURE EDITS
+%   > Add phase check that will make sure dates in session match the
+% phase completion date
+%   > Integrity of upload audit
 %   > LIVE- Print out what fellows are in charge of the NONC videos?
+%
+% Written by Carolyn Ranti 8.25.2014
 
-
-%Written by Carolyn Ranti 
-%4.2.14
-% >Edited 4.18.14 - fixed age=-1 issue (being put in infant lab), added
-% row/column totals for quality by age table
-% >Edited 5.1.14 - Changed the phase query so that it catches more issues,
-% and updated this script accordingly
-% >Edited 6.27.14 - Changed phase query again (in dataquery.py V5), updated
-% this script. Results should be easier to interpret now.
-% >Edited 7.7.14 - Fixed a bug from the phase query change. 
-% >Updated 7.25.14
-
-%DEBUGGING:
-% startdate='2013-12-31';enddate='2014-04-25';
-
-function weeklyCheck(startdate,enddate)
-
-
+origDir = pwd;
+home
+addpath('../QueryTools') %% to access all of the query processing tools
 
 disp('----------------------------------------------------------------------------------------------------------')
 disp('                                           Running weeklyCheck.m                                          ')
 
-origDir = pwd;
-queryDir = ['/Users/etl/Desktop/DataQueries/',startdate,'_',enddate];
-fileDir = '/Users/etl/Desktop/DataQueries/WeeklyChecks';
-FILENAME = ['WeeklyCheck',startdate,'_',enddate,'.csv'];
+%% SET UP directories
+pythonDir = pwd; % '/Volumes/ETLcommon/Software/';
+baseResultsDir = '/Users/etl/Desktop/DataQueries/WeeklyChecks/';
 
-temp=strsplit(startdate,'-');
-STARTYEAR=str2double(temp{1});
-STARTMONTH=str2double(temp{2});
-STARTDAY=str2double(temp{3});
-temp=strsplit(enddate,'-');
-ENDYEAR=str2double(temp{1});
-ENDMONTH=str2double(temp{2});
-ENDDAY=str2double(temp{3});
+%%
+resultsDir = [baseResultsDir,startdate,'_',enddate,'/'];
+weeklyCheckFile = [resultsDir,'Summary_',startdate,'_',enddate,'.csv'];
+matFileName = [startdate,'_',enddate,'.mat'];
 
 %% Run query & process query output, if necessary
 
 %if the query dir can't be found, runPython should be set to 1
-if ~exist(queryDir,'dir')
-    runPython=1; %this catch exists in processAuditQuery, too
+if ~exist(resultsDir,'dir')
+    runPython=1;
     processData=1;
 else
     %If the query dir already exists, do not run query again
     disp(' ')
     disp('%%%%');
-    fprintf(['Looks like this query exists in the following directory:\n\t',queryDir]);
+    fprintf(['Looks like this query exists in the following directory:\n\t',resultsDir]);
     runPython=strcmpi('y',input('\nWould you like to run it again and overwrite any existing files? (y/n): ','s'));
     disp('%%%%');
     disp(' ');
     
-    if ~runPython
-        %If the mat file with processed data cannot be found, processData should be 1
-        cd(queryDir)
-        if ~exist([startdate,'_',enddate,'.mat'],'file')
-            processData=1;
-        else
-            processData=0;
+    cd(resultsDir)
+    if runPython || ~exist(matFileName,'file')
+        processData = 1;
+    else %otherwise, load in existing matfile and check for variables
+        processData = 0;
+        load(matFileName); %this will give fields and data
+        if ~exist('fields','var') || exist('data','var')
+            processData = 1;
         end
-    else
-        processData=1; %it doesn't really matter what this is...
     end
 end
 
+%Run the query
+if runPython
+    cd(pythonDir)
+    system(['python weeklyCheckQuery.py ',startdate,' ',enddate]); %MATLAB command line will prompt user to enter database username and password
+end
 
-%Run the query (runPython) and/or process query output (~runPython & processData) 
-%and/or load already processed query output (~runPython & ~processData)
+%process query output (~runPython & processData) 
+%or load already processed query output (~runPython & ~processData)
 if processData || runPython
     cd(origDir)
-    [sessionFields,sessionData,~,~,AllProtocols,sProtLogic,~]=processAuditQuery(startdate,enddate,runPython); %rollup info doesn't matter
+    
+    %read in session query
+    sessionFilename = [resultsDir,'session_',startdate,'_',enddate,'.csv'];
+    [sessionFields,sessionData] = ReadInQuery(sessionFilename);
+    %do a little processing
+    monthAgeCol=strncmpi('Age',sessionFields,3);
+    [sessionFields,sessionData] = AddBinnedAge(sessionFields,sessionData,monthAgeCol);
+    colNum=find(cellfun(@(x) ~isempty(strfind(x,'Protocol')),sessionFields));
+    %protocol logic
+    [AllProtocols,sProtLogic] = ProtocolLogic(sessionData,colNum);
+    
+    %read in phase query
+    phaseFilename = [resultsDir,'phase_',startdate,'_',enddate,'.csv'];
+    [phaseFields,phaseData] = ReadInQuery(phaseFilename);
+
+    
+    cd(resultsDir)
+    save([startdate,'_',enddate],'sessionFields','sessionData','phaseFields','phaseData','AllProtocols','sProtLogic');
 else
-    cd(queryDir)
+    cd(resultsDir)
     load([startdate,'_',enddate])
 end
 
 %date the query was run --> set as modification date for the folder
-d = dir(queryDir);
+d = dir(resultsDir);
 queryRunDate = d(1).date; 
 
-%Process phase query or load mat file
-if ~exist([startdate,'_',enddate,'_phase.mat'],'file')
-    cd(origDir)
-    [phaseFields,phaseData]=processPhaseQuery(startdate,enddate);
-else
-    cd(queryDir)
-    load([startdate,'_',enddate,'_phase.mat']);
-end
 
 %% Find column indices
-pMatIDCol=find(strcmpi('Matlab ID',phaseFields));
+sDateCol=find(strcmpi('Date',sessionFields));
+sIDCol=find(strcmpi('ID',sessionFields));
+sMatIDCol=find(strcmpi('MatlabID',sessionFields));
+sSessionCol=find(strncmpi('Session',sessionFields,7));
+sQualCol=find(strcmpi('Quality',sessionFields));
+sBinAgeCol=find(strcmpi('BinnedAge',sessionFields));
+sFellowsCol=find(strcmpi('Fellows',sessionFields));
+
+pMatIDCol=find(strcmpi('MatlabID',phaseFields));
 pIDCol = find(strcmpi('ID',phaseFields));
-pFullDateCol=find(strcmpi('Fulfillment Date',phaseFields));
+pFullDateCol=find(strcmpi('FulfillmentDate',phaseFields));
 pPhaseCol=find(strcmpi('Phase',phaseFields));
 pReqCol=find(strcmpi('Requirement',phaseFields));
 pStatusCol=find(strcmpi('Status',phaseFields));
 pProtCol=find(strcmpi('Protocol',phaseFields));
 
-sDateCol=find(strcmpi('Date',sessionFields));
-sIDCol=find(strcmpi('ID',sessionFields));
-sMatIDCol=find(strcmpi('Matlab ID',sessionFields));
-sSessionCol=find(strncmpi('Session',sessionFields,7));
-sQualCol=find(strcmpi('Quality',sessionFields));
-sBinAgeCol=find(strcmpi('Binned Age',sessionFields));
-sFellowsCol=find(strcmpi('Fellows',sessionFields));
 
 %% Summary of sessions
-cd(fileDir)
-if exist(FILENAME,'file') && ~runPython
+cd(resultsDir)
+if exist(weeklyCheckFile,'file') && ~runPython
     disp(' ');
     disp('%%%%');
-    fprintf(['A summary for this date range already exists in the following location:\n\t',fileDir,FILENAME]);
+    fprintf(['A summary for this date range already exists in the following location:\n\t',resultsDir,weeklyCheckFile]);
     overwriteFile=strcmpi('y',input('\nDo you want to overwrite the file? (y/n): ','s'));
     disp('%%%%');
     disp(' ');
@@ -152,13 +168,12 @@ end
 
 if overwriteFile
 
-fid=fopen(FILENAME,'w+');
+fid=fopen(weeklyCheckFile,'w+');
 fprintf(fid,'Query run on:,%s\n\n',queryRunDate);
 fprintf(fid,'Start date:,%s\n',startdate);
 fprintf(fid,'End date:,%s\n',enddate);
 
 %summary of sessions/quality (by age, with infant/toddler/schoolage summary)
- 
 unqAges=unique(cell2mat(sessionData(:,sBinAgeCol)));
 
 qualitySummary=zeros(length(unqAges),6); %ages x qualities
@@ -170,6 +185,7 @@ for i=1:length(unqAges)
         qualitySummary(i,ii+1)=sum(tempQuals==ii);
     end
 end
+
 
 fprintf(fid,'\n*******************************\n*** QUALITY SUMMARY ***\n\n');
 
@@ -208,44 +224,40 @@ fprintf(fid,'%i, %i, %i, %i, %i, %i, %i\n',[unqAges,qualitySummary]'); %transpos
 
 %%%%%%%%
 % Change the phase query a little bit 
-% 1. Take out all wash u from session table
-sWashuProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'wash')),AllProtocols)),2));
-sessionData=sessionData(~sWashuProtLogic,:);
-sProtLogic=sProtLogic(~sWashuProtLogic,:);
-
-% 2. if the MATLAB ID is empty, copy the individual id over (as a string)
+% 1. if the MATLAB ID is empty, copy the individual id over (as a string)
 for i = 1:size(phaseData,1)
     if isempty(phaseData{i,pMatIDCol})
         phaseData{i,pMatIDCol}=num2str(phaseData{i,pIDCol});
     end
 end
 
-% 3. Take out anyone who doesn't have an eye-tracking session
+% 2. Take out anyone who doesn't have an eye-tracking session
 ETfilter=cellfun(@(x) ~isempty(strfind(x,'Tracking')),phaseData(:,pReqCol));
-eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol))&... %only matlab ids that were eye-tracked
-    ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only eye-tracking protocols
+eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)); %&... %only matlab ids that were eye-tracked
+    %ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only
+    %eye-tracking protocols %EDIT pretty sure this line wasn't doing
+    %anything... see if it messes up
 phaseData=phaseData(eyetrackedFilter,:);
-
 %%%%%%%%%
 
-%output is phaseCheck - first column is IDs (MATLAB if it exists,
+%output is phaseCheck - first column is IDs (MATLAB ID if it exists,
 %individual otherwise). One row per ID
 pUnqPeople=unique(phaseData(:,pMatIDCol));
 phaseCheck(:,1) = pUnqPeople;
 
 %Next cols:
-%  > Eye-tracking not phase edited (insert specific phase, otherwise empty)
-%  > Did not upload session (# of sessions with issues)
-%  > All phases in phase query
-%  > Binned ages in session query
-%  > Compensation not phase edited 
+%  2. Eye-tracking not phase edited (insert specific phase, otherwise empty)
+%  3. # sessions not uploaded
+%  4. All phases in phase query
+%  5. Binned ages in session query
+%  6. Compensation not phase edited 
 
-% EDIT: check that the dates match (eye-tracking and compensation)
+% EDIT: add check to see if dates match (eye-tracking and compensation)
 
 for i=1:length(pUnqPeople)
     person = pUnqPeople(i);
     if isnumeric(person)
-        person = str2num(person);
+        person = str2double(person);
         sPersonCol = sIDCol;
         pPersonCol = pIDCol;
     else
@@ -269,9 +281,8 @@ for i=1:length(pUnqPeople)
     %# of sessions not uploaded = (# eye-tracking requirements in phase query) - (occurences in session query)
     phaseCheck{i,3} = sum(tempETFilter)-size(tempSess,1);
     
-    %list of phases from phase query, list of binned ages from session
-    %query
-    phaseCheck{i,4} = strjoin(tempPhase(tempETFilter,pPhaseCol)','; '); %filtering by ET phases, so that there aren't repeats w/ compensation
+    %list of ET phases from phase query, list of binned ages from session query 
+    phaseCheck{i,4} = strjoin(tempPhase(tempETFilter,pPhaseCol)','; ');
     phaseCheck{i,5} = strjoin(cellfun(@num2str,tempSess(:,sBinAgeCol),'UniformOutput',false)','; ');
         
     % Compensation phases that weren't started
@@ -289,11 +300,10 @@ otherPhasesToCheck=sUnqPeople(IA);
     
 fprintf(fid,'\n\n*******************************\n*** ERROR CHECKING ***\n');
 
-
 fprintf(fid,'\nNOT UPLOADED:');
 toCheck = find(cellfun(@(x) x>0,phaseCheck(:,3)));
 if sum(toCheck)
-    fprintf(fid,',Individual,# Sessions Missing,Compensated Phases,Uploaded Sessions (age in months)\n');
+    fprintf(fid,',Individual,# Sessions Missing,Partial/Complete Phases,Uploaded Sessions (age in months)\n');
     for ii=toCheck' 
         fprintf(fid,',%s,%f,%s,%s\n',phaseCheck{ii,1},phaseCheck{ii,3},phaseCheck{ii,4},phaseCheck{ii,5});
     end
@@ -319,7 +329,6 @@ if sum(toCheck) || ~isempty(otherPhasesToCheck)
             fprintf(fid,',%s,%s,**phase = binned age from uploaded session\n',otherPhasesToCheck{ii},tempBinAges);
         end
     end
-    
 else
     fprintf(fid,',All good!\n');
 end
@@ -340,21 +349,16 @@ if sum(toCheck) || ~isempty(otherPhasesToCheck)
             tempBinAges=strjoin(cellfun(@num2str,tempBinAges,'UniformOutput',false)');
             fprintf(fid,',%s,%s,**phase = binned age from uploaded session\n',otherPhasesToCheck{ii},tempBinAges);
         end
-        
     end
 else
     fprintf(fid,',All good!\n');
 end
-% 
-% if ~isempty(otherPhasesToCheck)
-%     fprintf(fid,'\n** There is data in the session table but this person was not phase edited properly for eye-tracking and/or compensation requirements.\n');
-% end
 
 %%
 %Print all sessions that were run, split by lab
 fprintf(fid,'\n\n*******************************\n*** SESSIONS ***\n');
 fprintf(fid,'(Compare to paper checklists)\n');
-fprintf(fid,',Month, Day, Case\n');
+fprintf(fid,',Month,Day,Case,Fellows\n');
 
 fprintf(fid,'INFANT LAB');
 InfantLab=find((cell2mat(sessionData(:,sBinAgeCol))<6));
@@ -394,14 +398,16 @@ for ii=1:length(SALab)
 end
 
 
-
 %%
 fclose(fid);
-cd(origDir)
-disp(['Results saved in ',fileDir,'/',FILENAME]);
+fprintf(['Summary saved in:\n\t',weeklyCheckFile,'\n']);
 disp(' ');
 disp('---------------------------------------------------Done---------------------------------------------------')
 
 else
 disp('---------------------------------------------------Done---------------------------------------------------')
 end
+
+
+cd(origDir)
+rmpath('../QueryTools')
