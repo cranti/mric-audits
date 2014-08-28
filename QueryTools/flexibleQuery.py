@@ -1,26 +1,36 @@
 #!/usr/bin/python
 
 """ 
-Copied dataquery.py v5.1
+flexibleQuery.py
 
-Goal for this script: pass in a query, output the JSON formatted file 
-Will use with flexible matlab graphs
+    Reads in a text file with an HTSQL query for MRIC, runs that query, and writes
+    out the results in a csv file. Originally written for use with the audit 
+    visualization scripts.
+
+    If MRIC is returning an array, include the word "array" in the title of that
+    column. This script will write out the column with ### as a delimiter between
+    items (which allows MATLAB to parse the csv properly)
 
 
-    NOTES FROM MATLAB SCRIPT:
-    Pass in text file with query AND name for results file
-    If an array is being returned, write out with ### as delimiter, and ****put array in the title****
-    Should save the results in the resultsName file (assume standard file structure)
+    Usage: 
+        python flexibleQuery.py queryFile resultsDir --> queryFile is a full path
+            to a text file with an HTSQL query to run. The results are saved in 
+            resultsDir, in a csv named for the query file (with prefix "Results_")
 
+        python flexibleQuery.py queryFile --> same as above, but result csv is saved
+            in the same directory as the query file.
+
+    ***************
+    
+    Carolyn Ranti, 8.25.2014. Adapted from dataquery.py (V5.1)
 """
-#edit these:
+
 import os, sys
 from sys import stdin, stdout
 from time import sleep
-from htsql_client import login, HTSQL_Error
+from htsql_client import login
 import getpass
 import csv
-
 
 def _login(u=None, p=None, perspective='full_access'):
     """Log into the HTSQL server"""
@@ -29,33 +39,28 @@ def _login(u=None, p=None, perspective='full_access'):
         stdout.write("Username: ")
         u = stdin.readline().strip()
         p = getpass.getpass("Password: ").strip()
-    #
+    
     return login("https://marcus-ric.rexdb.net", u, p, perspective=perspective)
 
-#test
 def readInQuery(textFile):
     """Read in a textfile with an HTSQL query"""
-    #read in file
+    #read in text file
     query=''
     for line in open(textFile):
         query+=line
     query=query.strip()
-    #
+    
     return query
 
-#test
 def runQuery(HTSQLquery,fetch=None):
     """Query MRIC database, return query result"""
     if not fetch:
         fetch=_login()
-    #
-    print "Querying..."
+    
     return fetch(HTSQLquery)
 
-
-#test
 def writeOutQuery(csv_writer,queryResult):
-    """Write out query (columns are returned in random order)"""
+    """Write out query (columns are printed in random order)"""
     
     #exclude the 3 odd htsql: things that are output 
     keyOrder=[k for k in queryResult[0].keys() if k.count('htsql:')==0]
@@ -71,7 +76,7 @@ def writeOutQuery(csv_writer,queryResult):
                 temp = [str(temp)]
             row[arrayCol] = '['+"###".join(temp)+']'
 
-    #Edit - delete this?
+    # Catches a specific error (separating initials with a comma)
     if 'Fellows' in keyOrder:
         for row in queryResult:
             if row['Fellows']:
@@ -86,7 +91,9 @@ def writeOutQuery(csv_writer,queryResult):
     return
 
 
-def main(queryFile=None,resultDir=None):
+def main(fullQueryFile=None,resultDir=None):
+    """ Run MRIC query and write out results to a csv. """
+
     try:        
         fetch = _login()
     except Exception, err:
@@ -94,47 +101,45 @@ def main(queryFile=None,resultDir=None):
         sys.exit(-1)
 
     # EDIT add checks, make sure that prompted input works
-    if not queryFile:
-        stdout.write("Enter name of the textfile with the query to run (w/ full path): ")
-        fullQueryFile = stdin.readline().strip()
-        (queryFilePath,queryFile) = os.path.split(queryFile)
-    else:
-        fullQueryFile = queryFile
-        (queryFilePath,queryFile) = os.path.split(queryFile)
+    (queryFilePath,queryFileName) = os.path.split(fullQueryFile)
+    queryFileName = queryFileName.split('.')[0]
 
     # Read in textfile with query
     HTSQLquery = readInQuery(fullQueryFile)
 
-    print "Querying MRIC: " + HTSQLquery
-
     #run query
+    print " "
+    print "Querying MRIC:"
+    print "    " + HTSQLquery
+    print " "
     queryResult = runQuery(HTSQLquery,fetch)
 
-    # If no resultDir is entered, save the results where the query came from
+    # If no resultDir passed in, save the results where the query came from
     if not resultDir:
         resultDir = queryFilePath
-    # Add trailing / if it's missing
+
     if not resultDir[-1] == '/':
         resultDir = resultDir+'/'
 
-    # Write out result
-    queryFileName = queryFile.split('.')
-    resultFile = resultDir+'Results_'+queryFileName[0]+'.csv'
+    # Write out result to csv
+    resultFile = resultDir+'Results_'+queryFileName+'.csv'
     with open(resultFile,'w') as f:
         f_csv = csv.writer(f)
         writeOutQuery(f_csv,queryResult)
-    
-    print "Done. Query results saved:",resultFile
+
+    print " "
+    print "Done. Query results saved: "
+    print "    " + resultFile
+    print " "
     
     return
 
-
 if '__main__' == __name__:
     if len(sys.argv)==1:
-        main()
+        sys.exit("Not enough arguments. Usage:\n\tpython flexibleQuery.py queryFile *resultsDir")
     elif len(sys.argv)==2: #1 argument = queryFile
         main(sys.argv[1])
     elif len(sys.argv)==3: #2 arguments = queryFile, resultDir 
         main(sys.argv[1],sys.argv[2])
     else:
-        print 'Too many arguments.'
+        sys.exit("Too many arguments. Usage:\n\tpython flexibleQuery.py queryFile *resultsDir")
