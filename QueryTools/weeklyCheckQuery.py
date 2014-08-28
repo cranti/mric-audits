@@ -1,10 +1,8 @@
 #!/usr/bin/python
 
 """ weeklyCheckQuery.py
-- not running run level query!
 
-
-    This script runs data queries that are useful for ETL weekly check audits.
+    This script runs data queries that are useful for ETL weekly audits.
     
     When the script is run, it asks for a username and password for the MRIC database,
     a start date for the query, and an end date. The following queries are run:
@@ -20,14 +18,13 @@
             > Filter: participants returned in Query 1, phase must include 
             "compensation" or "tracking"
             > Columns returned:
-            'Matlab ID', 'ID', 'Study Code', 'Protocol array', 'Enrollment Date', 'Phase', 'Requirement', 
+            'Matlab ID', 'ID', 'Study Code', 'Protocol', 'Enrollment Date', 'Phase', 'Requirement', 
             'Status', 'Ideal Date', 'Fulfillment Date'
     
     The script creates a CSV file for each of the queries, all saved in a subdirectory of
-    QUERY_PATH. The CSV files are named by the range of dates for the query and a keyword
-    If the subdirectory already exists, the script will not run the query again - it will
-    inform the user that they should rename or delete that folder if they want to run the 
-    query again.
+    QUERY_PATH. The subdirectory is named by start and end date (e.g. 2014-08-01_2014-08-14).
+    The CSV files are also named by the range of dates for the query plus a keyword 
+    (e.g. session_2014-08-01_2014-08-14).
 
     After running the query and saving the results, the script will ask the user if they
     want to run another query. If the user says yes, the script will prompt them again for 
@@ -37,10 +34,12 @@
     If the dates are specified in this way, the script will exit after the first query -
     aka it will not give the user the option to run queries on additional date ranges.
 
+    * There is a function defined for a run table query, but not currently running it (b/c
+    it isn't being used for our weekly checks).
+
     ***************
-
-    Written by Carolyn Ranti, 8.25.2014. Adapted from dataquery.py (V5.2)
-
+    
+    Carolyn Ranti, 8.25.2014. Adapted from dataquery.py (V5.2)
 """
 
 import os, sys
@@ -52,13 +51,12 @@ from htsql_client import login
 
 ###
 ORIG_PATH=os.getcwd()
-#where the csv files are saved, and the suffix for the filename
-QUERY_PATH = '/Users/etl/Desktop/DataQueries/WeeklyChecks/'
-RESULTSFILE = '.csv'
+QUERY_PATH = '/Users/etl/Desktop/DataQueries/WeeklyChecks/' #where results are saved
+RESULTSFILE = '.csv' # suffix for the filename
 ###
 
 def _login(u=None, p=None, perspective='full_access'):
-    """Log into the HTSQL server"""
+    """ Log in to MRIC """
     if not u or not p:
         print "**Log in to MRIC**"
         stdout.write("Username: ")
@@ -68,10 +66,8 @@ def _login(u=None, p=None, perspective='full_access'):
     return login("https://marcus-ric.rexdb.net", u, p, perspective=perspective)
 
 def datecheck(date,delim='-'):
-    '''
-    Check that date is formatted properly. If so, return None. If not, return 
-    string explaining the issue.
-    '''
+    """ Check that date is formatted properly. If so, return None. If not, return 
+    string explaining the issue. """
     if len(date)!=10:
         return delim.join(("Incorrect length. Format must be YYYY","MM","DD"))
     elif not (date[4]==delim and date[7]==delim): #dashes in the right spots
@@ -87,16 +83,12 @@ def datecheck(date,delim='-'):
     return None
 
 def datestr_conv(date,delim='-'):
-    '''
-    Convert date to tuple of three integers [Y, M, D]
-    '''
+    """ Convert date to tuple of three integers [Y, M, D] """
     (y,m,d)=date.split(delim)
     return int(y),int(m),int(d)
 
 def getdatestr():
-    '''
-    Read in date from user input. If it's not formatted properly, raise an exception.
-    '''
+    """ Read in date from user input. If it's not formatted properly, error. """
     date = stdin.readline().strip()
     # if not date:
     #     date = '-'.join([str(a) for a in datetime.date.today()]
@@ -105,10 +97,12 @@ def getdatestr():
     return date
 
 def print_headers(csv_writer,keyOrder): 
+    """ Write out column headers """
     csv_writer.writerow(keyOrder)
     return
 
 def print_query(csv_writer,queryResult,keyOrder):
+    """ Write out the query result """
     keymap=dict(zip(keyOrder,range(1,len(keyOrder)+1)))
 
     # fix array output so that MATLAB can handle it easily
@@ -133,6 +127,8 @@ def print_query(csv_writer,queryResult,keyOrder):
     return
 
 def sessionTableQuery(fetch,filename,startdate,enddate):
+    """" Run the session table query and write out results. """
+
     queryResult_session=fetch("/session{date title 'Date'+, array(individual.participation.protocol) title 'Protocol array',\
         iscan_type title 'Iscan Type', individual.id() title 'ID', individual.matlab_id title 'Matlab ID', \
         code title 'Session number', age_testing_months title 'Age (months)', quality title 'Quality', \
@@ -152,7 +148,9 @@ def sessionTableQuery(fetch,filename,startdate,enddate):
     return
 
 def runTableQuery(fetch,filename,startdate,enddate):
-    """ Running this query in chunks, because the table can be long """
+    """ Run the run table query and write out results. 
+    Running this query in chunks, because the database will only output 
+    a limited number of rows at a time. """
 
     orderOfKeys_run=['Date','Session ID','Protocol array','Age (months)','Quality','Clip','Status','Sample count','Fix count','Lost count']
     
@@ -219,9 +217,12 @@ def runTableQuery(fetch,filename,startdate,enddate):
     return
 
 def phaseEditQuery(fetch,filename,startdate,enddate):
-    """First run a prelim query, finding all participants who were paid in the 
-    date range in question. Then run the real query, which looks for compensation AND eye tracking sessions for those
-    ID/phase/protocol combinations returned from the prelim query. """
+    """ Run the phase editor query and write out results.
+    First run a prelim query, finding all participants who were paid in the 
+    date range in question. Then run the real query, which looks for compensation 
+    AND eye tracking sessions for those ID/phase/protocol combinations returned 
+    from the prelim query. """
+
     #query: who was paid within this date range?
     phaseQuery_prelim= "/requirement{phase.participation.individual title 'ID',\
     phase.participation.protocol title 'Protocol',\
@@ -256,8 +257,8 @@ def phaseEditQuery(fetch,filename,startdate,enddate):
 
     return
 
-##write queries in here:
 def main(fetch=None,argsin=None):
+    """ Ask user for start and end dates, run MRIC queries."""
     if not fetch:
         try:        
             fetch = _login()
@@ -289,16 +290,11 @@ def main(fetch=None,argsin=None):
         os.mkdir(DATE_QUERY_PATH)
     os.chdir(DATE_QUERY_PATH)
 
-
     ##QUERY 1 - session table 
     filename_session=''.join(('session_',startdate,'_',enddate,RESULTSFILE))
     sessionTableQuery(fetch,filename_session,startdate,enddate)
 
-    # ##QUERY 2 - run level query
-    # filename_run=''.join(('run_',startdate,'_',enddate,RESULTSFILE))
-    # runTableQuery(fetch,filename_run,startdate,enddate)
-
-    ##QUERY 3 - phase editor. 
+    ##QUERY 2 - phase editor. 
     filename_phase=''.join(('phase_',startdate,'_',enddate,RESULTSFILE))
     phaseEditQuery(fetch,filename_phase,startdate,enddate)
 
@@ -307,17 +303,18 @@ def main(fetch=None,argsin=None):
     
     return
 
+if '__main__' == __name__:
+    """ If 2 command line arguments are entered when the script is called, only
+    one query will be run, with the args as start date & end date. With no 
+    command line arguments: prompt the user to enter dates & provide option of 
+    running multiple queries."""
 
-if '__main__' == __name__:    
     try:        
         fetch = _login()
     except Exception, err:
         print "Sorry, wrong username or password. \n more::", err
         sys.exit(-1)
 
-    # If 2 command line arguments are entered when the script is called, only one query will be 
-    # run, assuming that the args are start date & end date.
-    # With no command line arguments: prompt the user to enter dates & provide option of running multiple queries.
     if len(sys.argv)==3:
         main(fetch,sys.argv[1:3])
         print "Goodbye!"
