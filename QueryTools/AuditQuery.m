@@ -71,17 +71,10 @@ function [fields,data] = AuditQuery(resultsDir,baseQueryFile,varargin)
 origDir = pwd;
 
 % DEFAULT DIRECTORIES:
-<<<<<<< HEAD
 pythonDir = 'Users/etl/Desktop/mric-audits/QueryTools/';
 
 % If full paths aren't passed in, script looks in these folders
 resultsDirBasePath = '/Users/etl/Desktop/DataQueries/Graphs/';
-=======
-pythonDir = '/Users/etl/Desktop/VersionsCode/Audits/FlexibleGraphing/';
-
-% If full paths aren't passed in, script looks in these folders
-resultsDirBasePath = '/Users/etl/Desktop/DataQueries/AuditGraphs/';
->>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/';
 
 
