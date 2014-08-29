@@ -8,17 +8,27 @@ function weeklyCheck(startdate,enddate)
 %
 % This script uses weeklyCheckQuery.py to run two queries for the date
 % range specified in the inputs and produces a summary of the data, to
+<<<<<<< HEAD
 % facilitate the fellows' (roughly) weekly checks/data audits. Excludes
 % participants from any protocol containing "wash" (i.e. Wash-U sessions).
+=======
+% facilitate the fellows' (roughly) weekly checks/data audits.
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 %
 % Saves a csv file in a directory specified in the script. The csv contains
 % the following information:
 %       - Date that query was run
 %       - Date range of query
 %       - Summary of the sessions run in the date range & their qualities,
+<<<<<<< HEAD
 %         broken up by lab (age range) and binned age
 %       - A list of issues found by comparing session table and requirements
 %         table (SEE NOTES)
+=======
+%       broken up by lab (age range) and binned age
+%       - A list of issues found by comparing session table and requirements
+%       table (SEE NOTES)
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 %       - A list of all sessions (date of session, matlab id/sess #, fellows)
 %
 % The directory is named by date range, and it contains the query results
@@ -27,6 +37,7 @@ function weeklyCheck(startdate,enddate)
 %
 % NOTES:
 %   > INFO ABOUT ERROR CHECKING: False positives are possible in the error
+<<<<<<< HEAD
 %     checking process. The most common occurs when a two day ET session
 %     has been run, and the query range only includes one of the days.
 %     Because of the structure of the queries, the script will print that
@@ -53,6 +64,25 @@ function weeklyCheck(startdate,enddate)
 %   replace strsplit and strjoin in supporting scripts with strsplit_CR and
 %   strjoin_CR, respectively. This script uses strjoin, and I believe only 
 %   ReadInQuery uses strsplit.
+=======
+%   checking process. The most common occurs when a two day ET session
+%   has been run, and the query range only includes one of the days.
+%   Because of the structure of the queries, the script will print that
+%   a session hasn't been uploaded and/or it hasn't been phase edited
+%   properly. To check if this is the case, you can look at the dates of
+%   the session, or look in the database (in session table and phase
+%   editor) to make sure that everything looks good.
+%
+%   > If the query has been run and/or the summary already exists, the
+%   user will be asked whether they want to overwrite those files.
+%
+%   > The script prints where results have been saved to the command line.
+%
+%   > For initial set up (i.e. when running on a new computer), change the
+%   variable pythonDir (dir where weeklyCheckQuery.py is saved) and
+%   baseResultsDir (where a subdir will be created with all of the results)
+%
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 %
 % See also READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC
 
@@ -61,6 +91,7 @@ function weeklyCheck(startdate,enddate)
 % phase completion date
 %   > Integrity of upload audit
 %   > LIVE- Print out what fellows are in charge of the NONC videos?
+<<<<<<< HEAD
 
 % Written by Carolyn Ranti 8.25.2014
 % CVAR 8.29.2014
@@ -86,6 +117,23 @@ cd ..
 addpath('WeeklyCheck','QueryTools')
 
 % file names
+=======
+%
+% Written by Carolyn Ranti 8.25.2014
+
+origDir = pwd;
+home
+addpath('../QueryTools') %% to access all of the query processing tools
+
+disp('----------------------------------------------------------------------------------------------------------')
+disp('                                           Running weeklyCheck.m                                          ')
+
+%% SET UP directories
+pythonDir = pwd; % '/Volumes/ETLcommon/Software/';
+baseResultsDir = '/Users/etl/Desktop/DataQueries/WeeklyChecks/';
+
+%%
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 resultsDir = [baseResultsDir,startdate,'_',enddate,'/'];
 weeklyCheckFile = [resultsDir,'Summary_',startdate,'_',enddate,'.csv'];
 matFileName = [startdate,'_',enddate,'.mat'];
@@ -428,5 +476,11 @@ else
 disp('---------------------------------------------------Done---------------------------------------------------')
 end
 
+<<<<<<< HEAD
 cd(origDir)
 rmpath('WeeklyCheck','QueryTools')
+=======
+
+cd(origDir)
+rmpath('../QueryTools')
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2

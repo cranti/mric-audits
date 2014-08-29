@@ -9,6 +9,7 @@ function ETLAuditGraphs(startdate,enddate)
 %
 % * Remember to update the list of protocols over time (see the variable
 % graphLoop, which is set near the top of the script
+<<<<<<< HEAD
 %
 % *** If running the script on a computer for the first time ***
 % - Change default directories (at top of script)
@@ -27,6 +28,12 @@ function ETLAuditGraphs(startdate,enddate)
 %   replace strsplit and strjoin in supporting scripts with strsplit_CR and
 %   strjoin_CR, respectively. Currently, I believe only ReadInQuery.m is
 %   using strsplit.
+=======
+% * If running the script on a new computer, 
+% remember to change default directories when setting up on a new computer
+%   (also change directories in AuditGraphs, although those are defaults,
+%   so it's not as critical)
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
@@ -38,6 +45,7 @@ function ETLAuditGraphs(startdate,enddate)
 % document everything, check that it's all working
 
 % Written by Carolyn Ranti 8.18.2014
+<<<<<<< HEAD
 % CVAR 8.29.14
 
 %%
@@ -48,6 +56,21 @@ disp('*** ETLAuditGraphs ***')
 %% CHANGE FOR INITIAL SET UP: directories and a loop to go through all protocol types
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; %where base queries are saved
 mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; %subdirectories will be created (named by date)
+=======
+% CVAR 8.20.14
+
+
+dbstop if error
+home
+addpath('../QueryTools');
+disp('*** ETLAuditGraphs ***')
+
+%% Set up directories and a loop to go through all protocol types
+
+origDir = pwd;
+baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; %where base queries are saved
+mainResultsDir = '/Users/etl/Desktop/DataQueries/AuditGraphs/'; %subdirectories will be created (named by date)
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 
 graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
     'title',{'Infant','Toddler','School Age'},...
@@ -55,6 +78,7 @@ graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
                 {'toddler.toddler-asd-dd-2011-07','toddler.toddler-asd-dd-2012-11','toddler.toddler-td-2011-07'}...
                 {'school-age.school-age-asf-fellowship-asd-dd-2012-07','school-age.school-age-asf-fellowship-td-2012-07'}});
 
+<<<<<<< HEAD
 %% Add things to the path
 origDir = pwd;
 nameOfFunc = 'ETLAuditGraphs.m';
@@ -63,6 +87,8 @@ funcPath = funcPath(1:end-length(nameOfFunc));
 cd(funcPath);
 cd ..
 addpath('MonthlyVis','QueryTools')
+=======
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
 
 %% Select which queries to run
 if nargin==0
@@ -163,5 +189,9 @@ end
 % #8 	Assessments -- expected vs actual for each assessment
 
 
+<<<<<<< HEAD
 %%
 rmpath('MonthlyVis','QueryTools')
+=======
+rmpath('../QueryTools');
+>>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
