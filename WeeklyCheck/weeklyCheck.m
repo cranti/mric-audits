@@ -8,16 +8,17 @@ function weeklyCheck(startdate,enddate)
 %
 % This script uses weeklyCheckQuery.py to run two queries for the date
 % range specified in the inputs and produces a summary of the data, to
-% facilitate the fellows' (roughly) weekly checks/data audits.
+% facilitate the fellows' (roughly) weekly checks/data audits. Excludes
+% participants from any protocol containing "wash" (i.e. Wash-U sessions).
 %
 % Saves a csv file in a directory specified in the script. The csv contains
 % the following information:
 %       - Date that query was run
 %       - Date range of query
 %       - Summary of the sessions run in the date range & their qualities,
-%       broken up by lab (age range) and binned age
+%         broken up by lab (age range) and binned age
 %       - A list of issues found by comparing session table and requirements
-%       table (SEE NOTES)
+%         table (SEE NOTES)
 %       - A list of all sessions (date of session, matlab id/sess #, fellows)
 %
 % The directory is named by date range, and it contains the query results
@@ -26,23 +27,32 @@ function weeklyCheck(startdate,enddate)
 %
 % NOTES:
 %   > INFO ABOUT ERROR CHECKING: False positives are possible in the error
-%   checking process. The most common occurs when a two day ET session
-%   has been run, and the query range only includes one of the days.
-%   Because of the structure of the queries, the script will print that
-%   a session hasn't been uploaded and/or it hasn't been phase edited
-%   properly. To check if this is the case, you can look at the dates of
-%   the session, or look in the database (in session table and phase
-%   editor) to make sure that everything looks good.
-%
+%     checking process. The most common occurs when a two day ET session
+%     has been run, and the query range only includes one of the days.
+%     Because of the structure of the queries, the script will print that
+%     a session hasn't been uploaded and/or it hasn't been phase edited
+%     properly. To check if this is the case, you can look at the dates of
+%     the session, or look in the database (in session table and phase
+%     editor) to make sure that everything looks good.
 %   > If the query has been run and/or the summary already exists, the
-%   user will be asked whether they want to overwrite those files.
-%
+%     user will be asked whether they want to overwrite those files.
 %   > The script prints where results have been saved to the command line.
 %
-%   > For initial set up (i.e. when running on a new computer), change the
-%   variable pythonDir (dir where weeklyCheckQuery.py is saved) and
+% *** If running the script on a computer for the first time ***
+% - Change the variable pythonDir (where weeklyCheckQuery.py is saved) and 
 %   baseResultsDir (where a subdir will be created with all of the results)
+% - The way the path is currently being set, the folder organization should
+%   be as follows:
+%       > In some parent directory, there should be two folders:
+%               WeeklyCheck/     QueryTools/
+%       > This script should be saved in WeeklyCheck/
+%       > All supporting scripts should be saved in QueryTools/, including
+%       the Python scripts
 %
+% - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
+%   replace strsplit and strjoin in supporting scripts with strsplit_CR and
+%   strjoin_CR, respectively. This script uses strjoin, and I believe only 
+%   ReadInQuery uses strsplit.
 %
 % See also READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC
 
@@ -51,21 +61,31 @@ function weeklyCheck(startdate,enddate)
 % phase completion date
 %   > Integrity of upload audit
 %   > LIVE- Print out what fellows are in charge of the NONC videos?
-%
+
 % Written by Carolyn Ranti 8.25.2014
+% CVAR 8.29.2014
 
-origDir = pwd;
+%%
+% dbstop if error
 home
-addpath('../QueryTools') %% to access all of the query processing tools
-
 disp('----------------------------------------------------------------------------------------------------------')
 disp('                                           Running weeklyCheck.m                                          ')
 
-%% SET UP directories
-pythonDir = pwd; % '/Volumes/ETLcommon/Software/';
+%% CHANGE FOR INITIAL SET UP: directories
+pythonDir = '/Users/etl/Desktop/mric-audits/QueryTools';
 baseResultsDir = '/Users/etl/Desktop/DataQueries/WeeklyChecks/';
 
 %%
+%add things to the path
+origDir = pwd;
+nameOfFunc = 'weeklyCheck.m';
+funcPath = which(nameOfFunc);
+funcPath = funcPath(1:end-length(nameOfFunc));
+cd(funcPath);
+cd ..
+addpath('WeeklyCheck','QueryTools')
+
+% file names
 resultsDir = [baseResultsDir,startdate,'_',enddate,'/'];
 weeklyCheckFile = [resultsDir,'Summary_',startdate,'_',enddate,'.csv'];
 matFileName = [startdate,'_',enddate,'.mat'];
@@ -408,6 +428,5 @@ else
 disp('---------------------------------------------------Done---------------------------------------------------')
 end
 
-
 cd(origDir)
-rmpath('../QueryTools')
+rmpath('WeeklyCheck','QueryTools')

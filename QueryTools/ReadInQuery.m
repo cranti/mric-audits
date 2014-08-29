@@ -14,10 +14,13 @@ function [fields,data] = ReadInQuery(filename)
 %       in a cell, and split into individual entries using the delimiter
 %       ###. This corresponds to the output of the script flexibleQuery.py
 %
+% NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
+%   replace strsplit with strsplit_CR
+%
 % See also AUDITQUERY, ETLAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.2014
-% CVAR 8.19.14
+% CVAR 8.29.14
 
 %%
 assert(logical(exist(filename,'file')),['Error in ReadInQuery: cannot find the results file ',filename]);

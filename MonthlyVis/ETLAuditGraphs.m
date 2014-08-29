@@ -9,10 +9,24 @@ function ETLAuditGraphs(startdate,enddate)
 %
 % * Remember to update the list of protocols over time (see the variable
 % graphLoop, which is set near the top of the script
-% * If running the script on a new computer, 
-% remember to change default directories when setting up on a new computer
-%   (also change directories in AuditGraphs, although those are defaults,
-%   so it's not as critical)
+%
+% *** If running the script on a computer for the first time ***
+% - Change default directories (at top of script)
+% - Change directories in AuditGraphs (pythonDir and the defaults)
+% - The way the path is currently being set, the folder organization should
+%   be as follows:
+%       > In some parent directory, there should be two folders:
+%               MonthlyVis/     QueryTools/
+%       > This script should be saved in MonthlyVis/
+%       > Recommended that SessionAuditGraphs and RunAuditGraphs are also
+%       saved in MonthlyVis/
+%       > All supporting scripts should be saved in QueryTools/, including
+%       the Python scripts
+%
+% - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
+%   replace strsplit and strjoin in supporting scripts with strsplit_CR and
+%   strjoin_CR, respectively. Currently, I believe only ReadInQuery.m is
+%   using strsplit.
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
@@ -24,19 +38,16 @@ function ETLAuditGraphs(startdate,enddate)
 % document everything, check that it's all working
 
 % Written by Carolyn Ranti 8.18.2014
-% CVAR 8.20.14
+% CVAR 8.29.14
 
-
-dbstop if error
+%%
+% dbstop if error
 home
-addpath('../QueryTools');
 disp('*** ETLAuditGraphs ***')
 
-%% Set up directories and a loop to go through all protocol types
-
-origDir = pwd;
+%% CHANGE FOR INITIAL SET UP: directories and a loop to go through all protocol types
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; %where base queries are saved
-mainResultsDir = '/Users/etl/Desktop/DataQueries/AuditGraphs/'; %subdirectories will be created (named by date)
+mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; %subdirectories will be created (named by date)
 
 graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
     'title',{'Infant','Toddler','School Age'},...
@@ -44,6 +55,14 @@ graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
                 {'toddler.toddler-asd-dd-2011-07','toddler.toddler-asd-dd-2012-11','toddler.toddler-td-2011-07'}...
                 {'school-age.school-age-asf-fellowship-asd-dd-2012-07','school-age.school-age-asf-fellowship-td-2012-07'}});
 
+%% Add things to the path
+origDir = pwd;
+nameOfFunc = 'ETLAuditGraphs.m';
+funcPath = which(nameOfFunc);
+funcPath = funcPath(1:end-length(nameOfFunc));
+cd(funcPath);
+cd ..
+addpath('MonthlyVis','QueryTools')
 
 %% Select which queries to run
 if nargin==0
@@ -144,4 +163,5 @@ end
 % #8 	Assessments -- expected vs actual for each assessment
 
 
-rmpath('../QueryTools');
+%%
+rmpath('MonthlyVis','QueryTools')
