@@ -299,15 +299,12 @@ def main(fetch=None,argsin=None):
     phaseEditQuery(fetch,filename_phase,startdate,enddate)
 
     os.chdir(ORIG_PATH)
-<<<<<<< HEAD
     print " "
     print "Done. Query results saved: "
     print "    " + DATE_QUERY_PATH + filename_session
     print "    " + DATE_QUERY_PATH + filename_phase
     print " "
-=======
-    print "Queries complete. Results saved in %s" % (DATE_QUERY_PATH)
->>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
+
     
     return
 
@@ -325,19 +322,11 @@ if '__main__' == __name__:
 
     if len(sys.argv)==3:
         main(fetch,sys.argv[1:3])
-<<<<<<< HEAD
-=======
-        print "Goodbye!"
->>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
     else:
         q = True
         while q:
             main(fetch)
             stdout.write("Do you want to run another query (y or n)? ")
             ans = stdin.readline().strip()
-<<<<<<< HEAD
             q = (ans in ['y','Y'])
-=======
-            q = (ans in ['y','Y'])
-            print "Goodbye!"
->>>>>>> a2724a293023dfdab7897d56c0f2d9c1a176f4f2
+
