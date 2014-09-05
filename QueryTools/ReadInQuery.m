@@ -21,10 +21,6 @@ function [fields,data] = ReadInQuery(filename)
 
 % Written by Carolyn Ranti 8.15.2014
 % CVAR 8.29.14
-% See also AUDITQUERY, ETLAUDITGRAPHS
-
-% Written by Carolyn Ranti 8.15.2014
-% CVAR 8.19.14
 
 %%
 assert(logical(exist(filename,'file')),['Error in ReadInQuery: cannot find the results file ',filename]);

@@ -2,13 +2,22 @@ function ETLAuditGraphs(startdate,enddate)
 %ETLAuditGraphs - Audit eye-tracking data in MRIC and visualize the
 %results.
 % 
-% Usage:    ETLAuditGraphs(startdate,enddate)
-%           ETLAuditGraphs()
+% Usage:    ETLAuditGraphs(startdate,enddate) -- runs the queries filtered
+%               by the specified date range. Also runs a session table
+%               query that is NOT filtered by dates. 
+%           ETLAuditGraphs() -- only runs the session table query that is
+%               unfiltered by date range.
 %
-% Runs queries on the session table and the run table.
+% Runs queries on the session table and the run table, and calls functions
+% to visualize the results.
+% Results saved WHERE?
+% Graphs saved WHERE?
+%
+%
+%
 %
 % * Remember to update the list of protocols over time (see the variable
-% graphLoop, which is set near the top of the script
+% graphLoop, which is set near the top of the script)
 %
 % *** If running the script on a computer for the first time ***
 % - Change default directories (at top of script)
@@ -31,14 +40,24 @@ function ETLAuditGraphs(startdate,enddate)
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
 % EDITS TO MAKE
-% Assessments query
-% Run query -- is there a limit to the number of rows returned? This could
-%   be an issue if running long audits
-% add error checking
-% document everything, check that it's all working
+% > Dates!! -- currently, pretty sure it's looping through all "weekly
+% starts" where there are sessions. Change so that it graphs an empty spot
+% if there aren't any sessions there. (fix this after i figure out whether
+% to bin by week or month)
+%
+% > Assessments query
+% 
+% > Run query -- is there a limit to the number of rows returned? This could
+% be an issue if running long audits
+% 
+% > error checking
+% > finish documenting everything, check that it's all working
+%
+% > Process the queries further in HERE (add binned age/week start column)
+% -- resave the matfile with the extra input.
 
 % Written by Carolyn Ranti 8.18.2014
-% CVAR 8.29.14
+% CVAR 9.5.14
 
 %%
 % dbstop if error
@@ -49,12 +68,16 @@ disp('*** ETLAuditGraphs ***')
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; %where base queries are saved
 mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; %subdirectories will be created (named by date)
 
+
+%TODO - check all of these. also, where does 'infant-sibs.infant-sibs-high-risk-older-sib-2011-12' belong? 
 graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
     'title',{'Infant','Toddler','School Age'},...
-    'protocol',{{'ace-center-2012.eye-tracking-0-36m-2012-11';'infant-sibs.infant-sibs-high-risk-2011-12';'infant-sibs.infant-sibs-high-risk-older-sib-2011-12';'infant-sibs.infant-sibs-low-risk-2011-12'}... 
+    'protocol',{{'ace-center-2012.eye-tracking-0-36m-2012-11';'infant-sibs.infant-sibs-high-risk-2011-12';'infant-sibs.infant-sibs-low-risk-2011-12'}... 
                 {'toddler.toddler-asd-dd-2011-07','toddler.toddler-asd-dd-2012-11','toddler.toddler-td-2011-07'}...
                 {'school-age.school-age-asf-fellowship-asd-dd-2012-07','school-age.school-age-asf-fellowship-td-2012-07'}});
 
+            
+            
 %% Add things to the path
 origDir = pwd;
 nameOfFunc = 'ETLAuditGraphs.m';
@@ -62,7 +85,8 @@ funcPath = which(nameOfFunc);
 funcPath = funcPath(1:end-length(nameOfFunc));
 cd(funcPath);
 cd ..
-addpath('MonthlyVis','QueryTools')
+basePathDir = pwd;
+addpath([basePathDir,'/MonthlyVis'],[basePathDir,'/QueryTools'])
 
 %% Select which queries to run
 if nargin==0
@@ -163,5 +187,5 @@ end
 % #8 	Assessments -- expected vs actual for each assessment
 
 
-%%
-rmpath('MonthlyVis','QueryTools')
+%% Remove extra things from path
+rmpath([basePathDir,'/MonthlyVis'],[basePathDir,'/QueryTools'])

@@ -65,13 +65,13 @@ function [fields,data] = AuditQuery(resultsDir,baseQueryFile,varargin)
 % See also: READINQUERY, ETLAUDITGRAPHS, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.14
-% CVAR 8.20.14
+% CVAR 9.5.2014
 
 %%
 origDir = pwd;
 
 % DEFAULT DIRECTORIES:
-pythonDir = 'Users/etl/Desktop/mric-audits/QueryTools/';
+pythonDir = '/Users/etl/Desktop/mric-audits/QueryTools/';
 
 % If full paths aren't passed in, script looks in these folders
 resultsDirBasePath = '/Users/etl/Desktop/DataQueries/Graphs/';
@@ -162,9 +162,8 @@ if runPython
     
     % Produce error if the results file doesn't exist
     if ~exist(resultsFile,'file')
-        error(['Cannot find results file: ',resultsFile])
+        error(['Error in AuditQuery: Cannot find results file: ',resultsFile])
     end
-    
     
 end
 
@@ -188,6 +187,8 @@ if processQuery
 
     save(matFileName,'fields','data'); 
     disp(['Processed results saved: ',matFileName,'.mat']);
+else
+    disp(['Matfile was found with the results name (',matFileName,'). Query was not reprocessed.']);
 end
 
 cd(origDir)

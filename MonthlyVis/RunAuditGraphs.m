@@ -14,11 +14,12 @@ function RunAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
 %   protocols (cell) -- applies a filter to the data only
 %   
 %GRAPHS (numbering continued from SESSIONAUDITGRAPHS)
-%    4a Average viewing time/session VS time (by week) -- w/ error bars
+%    4a Average viewing time/session VS time -- w/ error bars
 %     b Histogram of viewing time
 %    5  Number of sessions/clip ID (stacked bars: included vs excluded)
-%    6  % Fixation VS clip ID
-%    7  % Fixation VS rounded age (by month)
+%    6  % Fixation VS clip ID (only included clips)
+%    7  % Fixation VS binned age (included AND excluded clips -- ask WJ if this is what he wants)
+%    8  Histogram of % fixation (included AND excluded clips)
 %
 %OTHER NOTES
 % The following column headers are necessary for the script to run:
@@ -30,15 +31,22 @@ function RunAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.2014
-% CVAR 8.21.14
+% CVAR 9.5.2014
 
-% Finish documenting/testing
-% what graphs should take into account the include/exclude status? or
-% quality?
-% unqWeekStarts -- should be the entire range, even if there weren't
-%   eye-tracking sessions! (make sure this doesn't mess up graphs...)
+
+% Graph 6 should ONLY be included clips
+%
+% Add a histogram -- % fix/clip (included AND excluded clips)
+%
+% !! Change the way that dates are being binned -- rather than always
+% binning by week/month, make it dependent on the range of dates. Do a
+% minimum of binning by week, but if there are > 20 weeks, bin by month. If
+% there are more than 24 months, bin by 3 months. Also, make sure that
+% every bin btwn the start and end are included -- should plot empty bars
+% (or whatever) rather than skipping them.
+%
 % xticks? would be useful for graphs over time (w/ rotated labels)
-
+% Finish documenting/testing
 
 %% Error checking
 
@@ -68,13 +76,19 @@ assert(sum(statusCol)==1,'Error in RunAuditGraphs: there must be exactly one "St
 
 %% Process queries 
 
+% Add binned ages column
+[fields,data] = AddBinnedAge(fields,data,ageCol);
+binAgeCol = strcmpi('BinnedAge',fields);
+if sum(binAgeCol)==0; error('Error in RunAuditGraphs: no BinnedAge column -- AddBinnedAge() may not have run properly.'); end
+
 % Add week start column
 [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
 weekStartCol = strcmpi('WeekStart',fields);
 if sum(weekStartCol)==0; error('Error in RunAuditGraphs: no WeekStart column -- AddWeekStart() may not have run properly.'); end
 
+
 %Select only the specified protocols
-if nargin<5 || isempty(protocols)
+if ~isempty(protocols)
     colNum=find(cellfun(@(x) ~isempty(strfind(x,'Protocol')),fields));
     assert(length(colNum)==1,'Error in RunAuditGraphs: there must be exactly one "Protocol" column in FIELDS');
 
@@ -99,11 +113,12 @@ sessionIDs=data(:,sessionIDCol);
 unqSessionIDs=unique(sessionIDs);
 
 %Clip IDs
-clipIDs = cell2mat(data(:,clipIDCol));
-unqClipIDs = unique(clipIDs);
+clipIDsALL = cell2mat(data(:,clipIDCol));
+unqClipIDs = unique(clipIDsALL);
+unqClipIDs = unqClipIDs(unqClipIDs~=9999); % exclude 9999DEMO
 
 %Include/exclude 
-status = data(:,statusCol);
+statusALL = data(:,statusCol);
 
 %Dates/Labels
 weekStartsALL = cell2mat(data(:,weekStartCol));
@@ -128,13 +143,11 @@ for a = 1:numDateLabels
     dateLabels(a,:) = {xTick,datestr([unqWeekStarts(xTick,:),0,0,0],'mmm dd, yyyy')};
 end
 
-%Round ages
-roundAgesALL=cellfun(@round,data(:,ageCol),'UniformOutput',false);
-roundAgesALL(cellfun(@isempty,roundAgesALL))={-1}; %convert empty cells to -1 (flag for ages that aren't in database)
-roundAgesALL=cell2mat(roundAgesALL);
-roundAges = zeros(size(unqSessionIDs,1));
-unqRoundAges = unique(roundAgesALL);
-unqRoundAges = unqRoundAges(unqRoundAges>0); %exclude unknown ages from graphs
+%Binned Ages
+binAgesALL = cell2mat(data(:,binAgeCol));
+unqBinAges = unique(binAgesALL);
+unqBinAges = unqBinAges(unqBinAges>0); %exclude unknown ages from graphs
+binAges=zeros(size(unqSessionIDs,1));
 
 %Sample count, fix count, and lost count
 sampleCountsALL=cell2mat(data(:,sampleCol));
@@ -150,7 +163,7 @@ for ii=1:length(unqSessionIDs)
     ind=ind(1); %first occurrence of the session ID
     
     weekStarts(ii,:)=weekStartsALL(ind,:);
-    roundAges(ii)=roundAgesALL(ind);
+    binAges(ii)=binAgesALL(ind);
     
     sampleCounts(ii)=sum(cell2mat(data(strcmpi(sessionIDs,unqSessionIDs(ii)),sampleCol)));
     fixCounts(ii)=sum(cell2mat(data(strcmpi(sessionIDs,unqSessionIDs(ii)),fixCol)));
@@ -178,8 +191,8 @@ figure();
 axes4a=axes('XTick',cell2mat(dateLabels(:,1)),'XTickLabel',dateLabels(:,2));
 rotateXLabels(gca(),30);
 hold(axes4a,'all');
-bar(axes4a,1:length(unqWeekStarts),graph(:,1),'w');
-errorbar(1:length(unqWeekStarts),graph(:,1),graph(:,2),'.');
+bar(axes4a,1:size(unqWeekStarts,1),graph(:,1),'w');
+errorbar(1:size(unqWeekStarts,1),graph(:,1),graph(:,2),'.');
 ylabel('Viewing Time (min)','FontSize',13);
 title([graphTitle,': Mean Viewing Time'],'FontSize',15);
 
@@ -203,8 +216,8 @@ saveas(gcf,['04b_HistViewTime- ',graphTitle,'.eps']);
 
 graph=[];
 for ii = 1:length(unqClipIDs)
-    graph(ii,1) = sum(clipIDs==unqClipIDs(ii)&strcmpi('include',status));
-    graph(ii,2) = sum(clipIDs==unqClipIDs(ii)&strcmpi('exclude',status));
+    graph(ii,1) = sum(clipIDsALL==unqClipIDs(ii)&strcmpi('include',statusALL));
+    graph(ii,2) = sum(clipIDsALL==unqClipIDs(ii)&strcmpi('exclude',statusALL));
 end
 
 figure()
@@ -221,13 +234,15 @@ saveas(axes5,['05_Sessions_Clip- ',graphTitle,'.fig']);
 saveas(axes5,['05_Sessions_Clip- ',graphTitle,'.eps']);
 
 %% #6 	% Fixation VS clip ID
+% only included clips 
 
 graph=[];
 for ii = 1:length(unqClipIDs)
-    allPerFix = fixCountsALL(clipIDs==unqClipIDs(ii))./sampleCountsALL(clipIDs==unqClipIDs(ii));
-    avgPerFix = mean(allPerFix);
-    n = length(allPerFix);
-    stdErr = std(allPerFix)/sqrt(n);
+    clipAllPerFix = fixCountsALL(clipIDsALL==unqClipIDs(ii)&strcmpi('include',statusALL))...
+        ./sampleCountsALL(clipIDsALL==unqClipIDs(ii)&strcmpi('include',statusALL));
+    avgPerFix = mean(clipAllPerFix);
+    n = length(clipAllPerFix);
+    stdErr = std(clipAllPerFix)/sqrt(n);
     graph(ii,:) = [avgPerFix,stdErr,n];
 end
 
@@ -238,33 +253,53 @@ bar(axes6,1:length(unqClipIDs),graph(:,1));
 errorbar(axes6,1:length(unqClipIDs),graph(:,1),graph(:,2),'k.');
 xlabel('Clip','FontSize',13);
 ylabel('% Fixation','FontSize',13);
+set('Position',[1 1 1500 450]);
 title([graphTitle,': % Fixation per Clip'],'FontSize',15);
 
 saveas(axes6,['06_PerFix_Clip- ',graphTitle,'.fig']);
 saveas(axes6,['06_PerFix_Clip- ',graphTitle,'.eps']);
 
-%% #7 % Fixation VS rounded age (by month)
+
+%% #7 % Fixation VS binned age
+% TODO - ask WJ if this should also be only included clips
 
 graph=[];
-for ii = 1:length(unqRoundAges)
-    allPerFix = fixCountsALL(roundAges==unqRoundAges(ii))./sampleCountsALL(roundAges==unqRoundAges(ii));
-    avgPerFix = mean(allPerFix);
-    n = length(allPerFix);
-    stdErr = std(allPerFix)/sqrt(n);
+for ii = 1:length(unqBinAges)
+    ageAllPerFix = fixCountsALL(binAges==unqBinAges(ii))./sampleCountsALL(binAges==unqBinAges(ii));
+    avgPerFix = mean(ageAllPerFix);
+    n = length(ageAllPerFix);
+    stdErr = std(ageAllPerFix)/sqrt(n);
     graph(ii,:) = [avgPerFix,stdErr,n];
 end
 
 figure()
-axes7=axes('XTick',unqRoundAges,'YLim',[0,1]);
+axes7=axes('XTick',unqBinAges,'YLim',[0,1]);
 hold(axes7,'all');
-bar(axes7,unqRoundAges,graph(:,1));
-errorbar(axes7,unqRoundAges,graph(:,1),graph(:,2),'k.');
-xlabel('Rounded Age (months)','FontSize',13);
+bar(axes7,unqBinAges,graph(:,1));
+errorbar(axes7,unqBinAges,graph(:,1),graph(:,2),'k.');
+xlabel('Binned Age (months)','FontSize',13);
 ylabel('% Fixation','FontSize',13);
 title([graphTitle,': % Fixation vs Age'],'FontSize',15);
 
 saveas(axes7,['07_PerFix_Age- ',graphTitle,'.fig']);
 saveas(axes7,['07_PerFix_Age- ',graphTitle,'.eps']);
+
+%% #8 Histogram of % fixation (included AND excluded clips)
+
+allPerFix=fixCountsALL./sampleCountsALL;
+
+figure()
+binInc=.1;
+bins=[0:binInc:1]+binInc/2;
+hist(allPerFix,bins);
+hold on
+set(gca,'XLim',[0,1]);
+xlabel('% Fixation','FontSize',13);
+ylabel('# Clips','FontSize',13);
+title([graphTitle,': Histogram - % Fixation'],'FontSize',15);
+
+saveas(gca,['08_HistClipsPerSess- ',graphTitle,'.fig']);
+saveas(gca,['08_HistClipsPerSess- ',graphTitle,'.eps']);
 
 %%%%%%%%%%%%%%%%
 
