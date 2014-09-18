@@ -166,11 +166,34 @@ sFellowsCol=find(strcmpi('Fellows',sessionFields));
 
 pMatIDCol=find(strcmpi('MatlabID',phaseFields));
 pIDCol = find(strcmpi('ID',phaseFields));
-pFullDateCol=find(strcmpi('FulfillmentDate',phaseFields));
 pPhaseCol=find(strcmpi('Phase',phaseFields));
 pReqCol=find(strcmpi('Requirement',phaseFields));
 pStatusCol=find(strcmpi('Status',phaseFields));
-pProtCol=find(strcmpi('Protocol',phaseFields));
+%pFullDateCol=find(strcmpi('FulfillmentDate',phaseFields));
+%pProtCol=find(strcmpi('Protocol',phaseFields));
+
+
+
+%% Change the queries a little bit 
+% 1. Take out all wash u from session table
+sWashuProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'wash')),AllProtocols)),2));
+sessionData=sessionData(~sWashuProtLogic,:);
+sProtLogic=sProtLogic(~sWashuProtLogic,:);
+
+% 2. if the MATLAB ID is empty, copy the individual id over (as a string)
+for i = 1:size(phaseData,1)
+    if isempty(phaseData{i,pMatIDCol})
+        phaseData{i,pMatIDCol}=num2str(phaseData{i,pIDCol});
+    end
+end
+
+% 3. Take out anyone who doesn't have an eye-tracking session
+ETfilter=cellfun(@(x) ~isempty(strfind(x,'Tracking')),phaseData(:,pReqCol));
+eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)); %&... %only matlab ids that were eye-tracked
+    %ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only
+    %eye-tracking protocols %EDIT pretty sure this line wasn't doing
+    %anything... see if it messes up
+phaseData=phaseData(eyetrackedFilter,:);
 
 
 %% Summary of sessions
@@ -206,7 +229,6 @@ for i=1:length(unqAges)
     end
 end
 
-
 fprintf(fid,'\n*******************************\n*** QUALITY SUMMARY ***\n\n');
 
 infantQuals=sum(qualitySummary(unqAges<6&unqAges>0,:),1);
@@ -240,25 +262,6 @@ fprintf(fid,'%i, %i, %i, %i, %i, %i, %i\n',[unqAges,qualitySummary]'); %transpos
 %   3) Did we upload all the sessions? -- The unique matlab IDs in the
 %   phase and session queries should be the same. In addition, there should
 %   be the same number of repetitions of each one 
-
-
-%%%%%%%%
-% Change the phase query a little bit 
-% 1. if the MATLAB ID is empty, copy the individual id over (as a string)
-for i = 1:size(phaseData,1)
-    if isempty(phaseData{i,pMatIDCol})
-        phaseData{i,pMatIDCol}=num2str(phaseData{i,pIDCol});
-    end
-end
-
-% 2. Take out anyone who doesn't have an eye-tracking session
-ETfilter=cellfun(@(x) ~isempty(strfind(x,'Tracking')),phaseData(:,pReqCol));
-eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)); %&... %only matlab ids that were eye-tracked
-    %ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only
-    %eye-tracking protocols %EDIT pretty sure this line wasn't doing
-    %anything... see if it messes up
-phaseData=phaseData(eyetrackedFilter,:);
-%%%%%%%%%
 
 %output is phaseCheck - first column is IDs (MATLAB ID if it exists,
 %individual otherwise). One row per ID

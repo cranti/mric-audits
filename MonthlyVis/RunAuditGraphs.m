@@ -22,31 +22,29 @@ function RunAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
 %    8  Histogram of % fixation (included AND excluded clips)
 %
 %OTHER NOTES
-% The following column headers are necessary for the script to run:
-%   Date, SessionID, Clip, Age, SampleCount, FixCount, LostCount, Status
-% A Protocol column is necessary if protocols input is specified.
-% All column headers are case insensitive. In addition, the age column is
-% only matched for the first 3 characters (e.g. Age(months) is acceptable).
+% >The following column headers are necessary for the script to run:
+%     SessionID, Clip, SampleCount, FixCount, LostCount, Status,
+%     WeekStart (OR Date), BinnedAge (OR Age)
+% > A Protocol column is necessary if protocols input is specified.
+% > All column headers are case insensitive. In addition, the age column is
+%   only matched for the first 3 characters (e.g. Age(months) is fine).
+% > Date bins are determined by the range of the query. If it is less than
+%   20 weeks, binned by week. Less than or equal to 2 yrs, binned by month.
+%   Anything greater, binned by 3 months.
+%
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.2014
-% CVAR 9.5.2014
+% CVAR 9.9.2014
 
+% NOTE ABOUT rotateXLabels -- Set YLim after xlabels have been rotated, or
+% it messes up positioning (for some reason)
 
-% Graph 6 should ONLY be included clips
-%
-% Add a histogram -- % fix/clip (included AND excluded clips)
-%
-% !! Change the way that dates are being binned -- rather than always
-% binning by week/month, make it dependent on the range of dates. Do a
-% minimum of binning by week, but if there are > 20 weeks, bin by month. If
-% there are more than 24 months, bin by 3 months. Also, make sure that
-% every bin btwn the start and end are included -- should plot empty bars
-% (or whatever) rather than skipping them.
-%
+%TODO
 % xticks? would be useful for graphs over time (w/ rotated labels)
 % Finish documenting/testing
+
 
 %% Error checking
 
@@ -55,37 +53,40 @@ assert(logical(exist(dirToSave,'dir')),...
 assert(size(data,2)==size(fields,2),'Error in RunAuditGraphs: DATA and FIELDS must have the same number of columns.');
 
 % Necessary columns:
-dateCol=find(cellfun(@(x) ~isempty(strfind(x,'Date')),fields));
+dateCol = strcmpi('Date',fields);
 sessionIDCol=strcmpi('SessionID',fields);
 clipIDCol = strcmpi('Clip',fields);
-ageCol = strncmpi('Age',fields,3);
 sampleCol=strcmpi('SampleCount',fields);
 fixCol=strcmpi('FixCount',fields);
 lostCol = strcmpi('LostCount',fields);
 statusCol = strcmpi('Status',fields);
+binAgeCol = strncmpi('BinnedAge',fields,3);
+weekStartCol=strcmpi('WeekStart',fields);
 
-assert(length(dateCol)==1,'Error in RunAuditGraphs: there must be exactly one "Date" column in FIELDS');
+%%Process data further if BinnedAge or WeekStart are missing
+if sum(binAgeCol)==0
+   ageCol = strncmpi('Age',fields,3);
+   [fields,data] = AddBinnedAge(fields,data,ageCol);
+   binAgeCol = strcmpi('BinnedAge',fields);
+   assert(sum(binAgeCol)==1,'Error in RunAuditGraphs: there must be either a "BinnedAge" or an "Age" column in FIELDS');
+end
+if sum(weekStartCol)==0
+    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+    weekStartCol = strcmpi('WeekStart',fields);
+end
+
+assert(sum(dateCol)==1,'Error in RunAuditGraphs: there must be exactly one "Date" column in FIELDS');
 assert(sum(sessionIDCol)==1,'Error in RunAuditGraphs: there must be exactly one "SessionID" column in FIELDS');
 assert(sum(clipIDCol)==1,'Error in RunAuditGraphs: there must be exactly one "Clip" column in FIELDS');
-assert(sum(ageCol)==1,'Error in RunAuditGraphs: there must be exactly one "Age" column in FIELDS');
 assert(sum(sampleCol)==1,'Error in RunAuditGraphs: there must be exactly one "SampleCount" column in FIELDS');
 assert(sum(fixCol)==1,'Error in RunAuditGraphs: there must be exactly one "FixCount" column in FIELDS');
 assert(sum(lostCol)==1,'Error in RunAuditGraphs: there must be exactly one "LostCount" column in FIELDS');
 assert(sum(statusCol)==1,'Error in RunAuditGraphs: there must be exactly one "Status" column in FIELDS');
+assert(sum(binAgeCol)==1,'Error in RunAuditGraphs: there must be exactly one "BinnedAge" column in FIELDS');
+assert(sum(weekStartCol)==1,'Error in RunAuditGraphs: there must be exactly one "WeekStart" column in FIELDS');
 
 
-%% Process queries 
-
-% Add binned ages column
-[fields,data] = AddBinnedAge(fields,data,ageCol);
-binAgeCol = strcmpi('BinnedAge',fields);
-if sum(binAgeCol)==0; error('Error in RunAuditGraphs: no BinnedAge column -- AddBinnedAge() may not have run properly.'); end
-
-% Add week start column
-[fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
-weekStartCol = strcmpi('WeekStart',fields);
-if sum(weekStartCol)==0; error('Error in RunAuditGraphs: no WeekStart column -- AddWeekStart() may not have run properly.'); end
-
+%% Pull data for graphing:
 
 %Select only the specified protocols
 if ~isempty(protocols)
@@ -105,9 +106,6 @@ if ~isempty(protocols)
     data=data(protSelect,:);
 end
 
-
-%% Pull data for graphing:
-
 %Unique sessions
 sessionIDs=data(:,sessionIDCol);
 unqSessionIDs=unique(sessionIDs);
@@ -119,29 +117,6 @@ unqClipIDs = unqClipIDs(unqClipIDs~=9999); % exclude 9999DEMO
 
 %Include/exclude 
 statusALL = data(:,statusCol);
-
-%Dates/Labels
-weekStartsALL = cell2mat(data(:,weekStartCol));
-unqWeekStarts = unique(weekStartsALL,'rows');
-unqWeekStarts = unqWeekStarts(sum(unqWeekStarts,2)>0,:); % exclude missing dates from graphs
-unqWeekStarts = sortrows(unqWeekStarts,[1,2,3]);
-weekStarts = zeros(size(unqSessionIDs,1),3);
-
-% make date labels (spread out)
-if size(unqWeekStarts,1)<10
-    numDateLabels=size(unqWeekStarts,1);
-elseif size(unqWeekStarts,1)<15
-    numDateLabels=6;
-else
-    numDateLabels=10;
-end
-xTicks = 1:floor(size(unqWeekStarts,1)/numDateLabels):size(unqWeekStarts,1);
-
-dateLabels = cell(numDateLabels,2); %xtick location + labels for graphing
-for a = 1:numDateLabels
-    xTick = xTicks(a);
-    dateLabels(a,:) = {xTick,datestr([unqWeekStarts(xTick,:),0,0,0],'mmm dd, yyyy')};
-end
 
 %Binned Ages
 binAgesALL = cell2mat(data(:,binAgeCol));
@@ -156,6 +131,90 @@ sampleCounts=zeros(size(unqSessionIDs,1));
 % Fix count
 fixCountsALL=cell2mat(data(:,fixCol));
 fixCounts=zeros(size(unqSessionIDs,1));
+
+%%DATES/LABELS
+%unique "week starts"
+weekStartsALL = cell2mat(data(:,weekStartCol));
+unqWeekStarts = unique(weekStartsALL,'rows');
+unqWeekStarts = unqWeekStarts(sum(unqWeekStarts,2)>0,:); % exclude missing dates from graphs
+unqWeekStarts = sortrows(unqWeekStarts,[1,2,3]);
+weekStarts = zeros(size(unqSessionIDs,1),3);
+
+%Actual date range
+dates = cell2mat(data(:,dateCol));
+sortedDates = sortrows(dates);
+startDate = datenum(sortedDates(1,:));
+endDate = datenum(sortedDates(end,:));
+
+%Figure out how many bins:
+startWeekDate = datenum(unqWeekStarts(1,1),unqWeekStarts(1,2),unqWeekStarts(1,3));
+endWeekDate = datenum(unqWeekStarts(end,1),unqWeekStarts(end,2),unqWeekStarts(end,3));
+numWeeks = floor((endWeekDate - startWeekDate)/7);
+
+if numWeeks <= 20 %less than 20 weeks of data --> bin by week
+    dateBins = [];
+    currDate = startWeekDate;
+    while currDate <= endDate
+        temp = datevec(currDate);
+        dateBins = [dateBins; temp(1:3)];
+        currDate = currDate + 7;
+    end
+elseif numWeeks < 104 %more than 20 weeks, less than 2 years --> bin by month
+
+    dateBins = [];
+    if year(startDate) == year(endDate)
+        YEAR = year(startDate);
+        for MONTH = month(startDate):month(endDate)
+           dateBins = [dateBins; YEAR, MONTH, 1]; 
+        end
+    else
+        YEAR = year(startDate);
+        for MONTH = month(startDate):12
+            dateBins = [dateBins; YEAR, MONTH, 1];
+        end
+        YEAR = year(endDate);
+        for MONTH = 1:month(endDate)
+            dateBins = [dateBins; YEAR, MONTH, 1];
+        end
+    end
+    
+    %Iterate through weekStarts and change to the first of the month
+    for a = 1:size(weekStartsALL,1);
+        weekStartsALL(a,:) = [dates(a,1),dates(a,2),1];
+    end
+else %more than 2 years of data --> bin by 3 months
+    MONTH = month(startDate);
+    YEAR = year(startDate);
+    dateBins = [];
+    while YEAR <= year(endDate)
+        %make sure MONTH is in the right range; iterate year if needed
+        if MONTH > 12 
+            MONTH = mod(MONTH-1,12)+1;
+            YEAR = YEAR + 1;
+        end
+        
+        %break if out of the date range
+        if (YEAR == year(endDate) && MONTH > month(endDate))
+           break 
+        end
+        
+        %add to tempLabels, iterate month
+        dateBins = [dateBins; YEAR, MONTH, 1];
+        MONTH = MONTH + 3;
+    end
+            
+    %Iterate through weekStarts and change to the first of the month
+    for a = 1:size(weekStartsALL,1);
+        weekStartsALL(a,:) = [dates(a,1),dates(a,2),1];
+    end 
+end
+
+numDateLabels = size(dateBins,1);
+dateLabels = cell(numDateLabels,2); %xtick location + labels for graphing. 
+for a = 1:numDateLabels
+    dateLabels(a,:) = {a,datestr([dateBins(a,:),0,0,0],'mmm dd, yyyy')};
+end
+
 
 % Corresponding to unique session IDs
 for ii=1:length(unqSessionIDs)
@@ -174,13 +233,13 @@ end
 origDir=pwd;
 cd(dirToSave)
 
-%% #4a Average viewing time/session VS time (by week) -- w/ error bars
+%% #4a Average viewing time/session VS time -- w/ error bars
 
 graph=[];
 allViewTimes=[];
-for ii = 1:size(unqWeekStarts,1)
-    viewTime=sampleCounts(weekStarts(:,1)==unqWeekStarts(ii,1) &...
-        weekStarts(:,2)==unqWeekStarts(ii,2) & weekStarts(:,3)==unqWeekStarts(ii,3))/(30*60);
+for ii = 1:size(dateBins,1)
+    viewTime=sampleCounts(weekStarts(:,1)==dateBins(ii,1) &...
+        weekStarts(:,2)==dateBins(ii,2) & weekStarts(:,3)==dateBins(ii,3))/(30*60);
     n=length(viewTime);
     stderr=std(viewTime)/sqrt(n);
     graph=[graph;mean(viewTime),stderr,n];
@@ -191,8 +250,8 @@ figure();
 axes4a=axes('XTick',cell2mat(dateLabels(:,1)),'XTickLabel',dateLabels(:,2));
 rotateXLabels(gca(),30);
 hold(axes4a,'all');
-bar(axes4a,1:size(unqWeekStarts,1),graph(:,1),'w');
-errorbar(1:size(unqWeekStarts,1),graph(:,1),graph(:,2),'.');
+bar(axes4a,1:size(dateBins,1),graph(:,1),'w');
+errorbar(1:size(dateBins,1),graph(:,1),graph(:,2),'.');
 ylabel('Viewing Time (min)','FontSize',13);
 title([graphTitle,': Mean Viewing Time'],'FontSize',15);
 
@@ -253,8 +312,8 @@ bar(axes6,1:length(unqClipIDs),graph(:,1));
 errorbar(axes6,1:length(unqClipIDs),graph(:,1),graph(:,2),'k.');
 xlabel('Clip','FontSize',13);
 ylabel('% Fixation','FontSize',13);
-set('Position',[1 1 1500 450]);
-title([graphTitle,': % Fixation per Clip'],'FontSize',15);
+% set(gca,'Position',[1 1 1500 450]);
+title([graphTitle,': % Fixation per Clip (included clips)'],'FontSize',15);
 
 saveas(axes6,['06_PerFix_Clip- ',graphTitle,'.fig']);
 saveas(axes6,['06_PerFix_Clip- ',graphTitle,'.eps']);
@@ -279,7 +338,7 @@ bar(axes7,unqBinAges,graph(:,1));
 errorbar(axes7,unqBinAges,graph(:,1),graph(:,2),'k.');
 xlabel('Binned Age (months)','FontSize',13);
 ylabel('% Fixation','FontSize',13);
-title([graphTitle,': % Fixation vs Age'],'FontSize',15);
+title([graphTitle,': % Fixation vs Age (all clips)'],'FontSize',15);
 
 saveas(axes7,['07_PerFix_Age- ',graphTitle,'.fig']);
 saveas(axes7,['07_PerFix_Age- ',graphTitle,'.eps']);
@@ -296,13 +355,12 @@ hold on
 set(gca,'XLim',[0,1]);
 xlabel('% Fixation','FontSize',13);
 ylabel('# Clips','FontSize',13);
-title([graphTitle,': Histogram - % Fixation'],'FontSize',15);
+title([graphTitle,': Histogram - % Fixation (all clips)'],'FontSize',15);
 
 saveas(gca,['08_HistClipsPerSess- ',graphTitle,'.fig']);
 saveas(gca,['08_HistClipsPerSess- ',graphTitle,'.eps']);
 
 %%%%%%%%%%%%%%%%
-
 
 %% Clean up
 %move all the .fig files to a subfolder

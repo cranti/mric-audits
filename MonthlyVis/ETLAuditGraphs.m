@@ -21,7 +21,7 @@ function ETLAuditGraphs(startdate,enddate)
 %
 % *** If running the script on a computer for the first time ***
 % - Change default directories (at top of script)
-% - Change directories in AuditGraphs (pythonDir and the defaults)
+% - Change directories in AuditQuery (pythonDir and the defaults)
 % - The way the path is currently being set, the folder organization should
 %   be as follows:
 %       > In some parent directory, there should be two folders:
@@ -33,9 +33,7 @@ function ETLAuditGraphs(startdate,enddate)
 %       the Python scripts
 %
 % - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
-%   replace strsplit and strjoin in supporting scripts with strsplit_CR and
-%   strjoin_CR, respectively. Currently, I believe only ReadInQuery.m is
-%   using strsplit.
+%   replace strsplit with strsplit_CR in ReadInQuery.m.
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
@@ -96,11 +94,12 @@ if nargin==0
     doSessionQuery = 0;
     doRunQuery = 0;
 else
-    doSessionQuery = 1; %strcmpi('y',input('Run the date-filtered Session Table query? (y/n): ','s'));
+    doSessionQuery = 1; 
     doRunQuery = 1;
 end
+
 doUnfSessionQuery = 1;
-doUnfRunQuery = 0; %not working right now -- change this once the query stuff is fixed :(
+doUnfRunQuery = 0; %TODO - unfiltered run query not working right now. Change this once the query stuff is fixed
 
 disp('Let''s visualize some data!')
 
@@ -110,7 +109,14 @@ if doSessionQuery
     resultsDir = [mainResultsDir,startdate,'_',enddate,'/'];
     
     [fields,data] = AuditQuery(resultsDir,baseQueryFile,startdate,enddate);
-
+    % Add binned ages column
+    ageCol = strncmpi('Age',fields,3);
+    [fields,data] = AddBinnedAge(fields,data,ageCol);
+    % Add week start column
+    dateCol = strcmpi('Date',fields);
+    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+    
+    
     for ii=1:length(graphLoop)
         dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
         if ~exist(dirToSaveGraphs,'dir')
@@ -130,7 +136,13 @@ if doRunQuery
     resultsDir = [mainResultsDir,startdate,'_',enddate,'/'];
     
     [fields,data] = AuditQuery(resultsDir,baseQueryFile,startdate,enddate);
-
+    % Add binned ages column
+    ageCol = strncmpi('Age',fields,3);
+    [fields,data] = AddBinnedAge(fields,data,ageCol);
+    % Add week start column
+    dateCol = strcmpi('Date',fields);
+    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+    
     for ii=1:length(graphLoop)
         dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
         if ~exist(dirToSaveGraphs,'dir')
@@ -150,7 +162,14 @@ if doUnfSessionQuery
     resultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
     
     [fields,data] = AuditQuery(resultsDir,baseQueryFile);
-
+    % Add binned ages column
+    ageCol = strncmpi('Age',fields,3);
+    [fields,data] = AddBinnedAge(fields,data,ageCol);
+    % Add week start column
+    dateCol = strcmpi('Date',fields);
+    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+    
+    
     for ii=1:length(graphLoop)
         dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
         if ~exist(dirToSaveGraphs,'dir')
@@ -170,7 +189,13 @@ if doUnfRunQuery
     resultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
     
     [fields,data] = AuditQuery(resultsDir,baseQueryFile);
-
+    % Add binned ages column
+    ageCol = strncmpi('Age',fields,3);
+    [fields,data] = AddBinnedAge(fields,data,ageCol);
+    % Add week start column
+    dateCol = strcmpi('Date',fields);
+    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+    
     for ii=1:length(graphLoop)
         dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
         if ~exist(dirToSaveGraphs,'dir')

@@ -117,6 +117,7 @@ matFileName = ['Results_',baseQueryName];
 
 % if results file already exists, ask user if they want to overwrite
 if exist(resultsFile,'file')
+    commandwindow();
     disp(' ')
     disp(['A results file already exists with the name specified (',resultsFile,')']);
     runPython=strcmpi('y',input('Would you like to run the query again and overwrite existing files? (y/n): ','s'));
@@ -154,6 +155,7 @@ if runPython
     
     %% Call script to run the queries (flexibleQuery.py) 
     cd(pythonDir)
+    commandwindow();
     disp(' ')
     disp('-----RUNNING flexibleQuery.py-----')
     system(['python flexibleQuery.py ',newQueryFile,' ',resultsDir]); %MATLAB command line will display prompts for MRIC username/password
