@@ -33,7 +33,7 @@ function [fields,data] = AuditQuery(resultsDir,baseQueryFile,varargin)
 %           auditQuery('exampleDir','exampleQuery.txt','2014-08-01','2014-08-15')
 %       will produce the following query to MRIC:
 %           /session?date>='2014-08-01'&date<='2014-08-15'
-%   Be careful to have single quotes for any field that should be in the query
+%   Be careful to include single quotes for any field that should be in the query
 %   as a string.
 %   If the query is returning an array, include array in the column title (e.g.
 %   Protocolarray) so that READINQUERY can process it as such.
@@ -78,7 +78,7 @@ resultsDirBasePath = '/Users/etl/Desktop/DataQueries/Graphs/';
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/';
 
 
-%% Check for existence of base query 
+%% Check for results directory and file
 
 % if full path isn't passed in for the base query file, look in baseQueryDir
 if ~strcmpi(baseQueryFile(1),'/')
@@ -91,10 +91,6 @@ else
     temp = strsplit(temp,'.');
     baseQueryName = temp{1};
 end
-
-assert(logical(exist(baseQueryFile,'file')),['Error in AuditQuery: cannot find the base query file ',baseQueryFile]);
-
-%% Check for results directory and file
 
 % if full path isn't passed in for the results directory, default to resultsDirBasePath
 if ~strcmpi(resultsDir(1),'/')
@@ -121,8 +117,10 @@ if exist(resultsFile,'file')
     disp(' ')
     disp(['A results file already exists with the name specified (',resultsFile,')']);
     runPython=strcmpi('y',input('Would you like to run the query again and overwrite existing files? (y/n): ','s'));
+% or check for the existence of the base query and run the python script
 else
     runPython=1;
+    assert(logical(exist(baseQueryFile,'file')),'QueryTools:fileNotFound',['Error in AuditQuery: cannot find the base query file ',baseQueryFile]);
 end
 
 
@@ -131,17 +129,21 @@ if runPython
     %% Edit the base query
     %read in base query
     fid = fopen(baseQueryFile);
-    baseQuery = fgetl(fid);
+    baseQuery = '';
+    line = fgetl(fid);
+    while ischar(line)
+        baseQuery = [baseQuery,line];
+        line = fgetl(fid);
+    end
     fclose(fid);
     
     %find/replace "%X"s -- if there aren't enough optional arguments, error
-    %EDIT - check that it still works with %X and change baseQueries
     repSpots = strfind(baseQuery,'%X');
     if length(repSpots)~=length(varargin)
-        error('Incorrect number of arguments to fill in the base query.');
+        error('QueryTools:badInput','Error in AuditQuery: Incorrect number of arguments to fill in the base query.');
     end
     
-    %replace %% with varargin
+    %replace %X with varargin
     for i=1:length(repSpots)
         baseQuery=[baseQuery(1:repSpots(i)-1),varargin{i},baseQuery(repSpots(i)+2:end)];
         repSpots=repSpots+(length(varargin{i})-2);
@@ -162,9 +164,10 @@ if runPython
     disp('----------------------------------')
     cd(origDir)
     
-    % Produce error if the results file doesn't exist
+    % Produce error if the results file doesn't exist after running the
+    % python script
     if ~exist(resultsFile,'file')
-        error(['Error in AuditQuery: Cannot find results file: ',resultsFile])
+        error('QueryTools:fileNotFound',['Error in AuditQuery: Cannot find results file: ',resultsFile])
     end
     
 end
@@ -173,11 +176,11 @@ end
 %only reprocess if necessary (if query was run OR matfile doesn't exist)
 cd(resultsDir)
 processQuery = 0;
-if runPython || ~exist(matFileName,'file')
+if runPython || ~exist([matFileName,'.mat'],'file')
     processQuery = 1;
 else %otherwise, load in existing matfile and check for variables
     load(matFileName); %this will give fields and data
-    if ~exist('fields','var') || exist('data','var')
+    if ~exist('fields','var') || ~exist('data','var')
         processQuery = 1;
     end
 end

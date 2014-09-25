@@ -41,10 +41,6 @@ function SessionAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
 % NOTE ABOUT rotateXLabels -- Set YLim after xlabels have been rotated, or
 % it messes up positioning (for some reason)
 
-%TODO
-% xticks? would be useful for graphs over time (w/ rotated labels)
-% Finish documenting/testing
-
 
 %% Error checking
 
@@ -123,7 +119,7 @@ unqWeekStarts = sortrows(unqWeekStarts,[1,2,3]);
 
 %Actual date range
 dates = cell2mat(data(:,dateCol));
-sortedDates = sortrows(dates);
+sortedDates = sortrows(dates(sum(dates,2)>0,:));
 startDate = datenum(sortedDates(1,:));
 endDate = datenum(sortedDates(end,:));
 

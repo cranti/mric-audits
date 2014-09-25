@@ -10,18 +10,27 @@ function ETLAuditGraphs(startdate,enddate)
 %
 % Runs queries on the session table and the run table, and calls functions
 % to visualize the results.
-% Results saved WHERE?
-% Graphs saved WHERE?
 %
+% File outputs include:
+%       - a .txt file with each unique query that is run
+%       - a .csv file with the results of each query
+%       - a .mat file with processed results from each query
+%       - .eps and .fig versions of each figure created
+% All of these files are saved in subdirectories of 
+%       /Users/etl/Desktop/DataQueries/Graphs/
 %
-%
-%
+% Figures are created separately for different protocol groupings (i.e.
+% infant protocols, toddler protocols, and school age protocols), and they
+% are saved in separate subdirectories
 % * Remember to update the list of protocols over time (see the variable
-% graphLoop, which is set near the top of the script)
+% graphLoop, which is set near the top of the script).
+%
+%
 %
 % *** If running the script on a computer for the first time ***
-% - Change default directories (at top of script)
-% - Change directories in AuditQuery (pythonDir and the defaults)
+% - Create folders for base queries and results
+% - Change default directories (at top of this script)
+% - Change directories in AuditQuery.m (pythonDir and the defaults)
 % - The way the path is currently being set, the folder organization should
 %   be as follows:
 %       > In some parent directory, there should be two folders:
@@ -31,34 +40,22 @@ function ETLAuditGraphs(startdate,enddate)
 %       saved in MonthlyVis/
 %       > All supporting scripts should be saved in QueryTools/, including
 %       the Python scripts
+% - Can use testQueryTools.m to validate scripts in QueryTools/ 
 %
 % - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
 %   replace strsplit with strsplit_CR in ReadInQuery.m.
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
-% EDITS TO MAKE
-% > Dates!! -- currently, pretty sure it's looping through all "weekly
-% starts" where there are sessions. Change so that it graphs an empty spot
-% if there aren't any sessions there. (fix this after i figure out whether
-% to bin by week or month)
-%
+% TODO
 % > Assessments query
-% 
-% > Run query -- is there a limit to the number of rows returned? This could
-% be an issue if running long audits
-% 
-% > error checking
-% > finish documenting everything, check that it's all working
-%
-% > Process the queries further in HERE (add binned age/week start column)
-% -- resave the matfile with the extra input.
+% > Run query -- get around the limit to the number of rows returned
+% > Check protocol list w/ WJ
 
 % Written by Carolyn Ranti 8.18.2014
-% CVAR 9.5.14
+% CVAR 9.25.14
 
 %%
-% dbstop if error
 home
 disp('*** ETLAuditGraphs ***')
 
@@ -66,8 +63,7 @@ disp('*** ETLAuditGraphs ***')
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; %where base queries are saved
 mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; %subdirectories will be created (named by date)
 
-
-%TODO - check all of these. also, where does 'infant-sibs.infant-sibs-high-risk-older-sib-2011-12' belong? 
+%TODO - check all of these w/ WJ. also, where does 'infant-sibs.infant-sibs-high-risk-older-sib-2011-12' belong? 
 graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
     'title',{'Infant','Toddler','School Age'},...
     'protocol',{{'ace-center-2012.eye-tracking-0-36m-2012-11';'infant-sibs.infant-sibs-high-risk-2011-12';'infant-sibs.infant-sibs-low-risk-2011-12'}... 
@@ -99,10 +95,14 @@ else
 end
 
 doUnfSessionQuery = 1;
-doUnfRunQuery = 0; %TODO - unfiltered run query not working right now. Change this once the query stuff is fixed
+doUnfRunQuery = 0; %TODO - not running unfiltered run query yet
 
 disp('Let''s visualize some data!')
 
+disp(' ');
+disp('NOTE:');
+disp(['   You''ll be prompted to log in to MRIC ',num2str(sum([doSessionQuery,doRunQuery,doUnfSessionQuery,doUnfRunQuery])),' time(s).']);
+disp(' ');
 %% Session query
 if doSessionQuery
     baseQueryFile = [baseQueryDir,'sessionQuery.txt'];

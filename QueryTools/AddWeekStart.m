@@ -4,6 +4,7 @@ function [fields,data] = AddWeekStart(fields,data,dateCol,startDay)
 % Add week start column to data, output updated data and fields (with
 % new column header "WeekStart"). Will not make any changes to DATA or
 % FIELDS if there is already a column called WeekStart.
+% Dates must be in vector form ([Y M D]).
 %
 % USAGE AddWeekStart(fields, data, dateCol) -- finds the Monday before each
 %           date, adds the date as a vector [Y M D] to a new column of data
@@ -16,10 +17,16 @@ function [fields,data] = AddWeekStart(fields,data,dateCol,startDay)
 % See also AUDITQUERY, READINQUERY
 
 % Written by Carolyn Ranti
-% CVAR 9.5.2014
+% CVAR 9.25.2014
 
-%%
-assert(size(data,2)==size(fields,2),'Error in AddWeekStart: DATA and FIELDS must have the same number of columns.');
+%% Check input
+assert(size(data,2)==size(fields,2),'QueryTools:badInput','Error in AddWeekStart: DATA and FIELDS must have the same number of columns.');
+
+if nargin==3
+    startDay='mon';
+end
+assert(sum(strcmpi(startDay,{'mon','tue','wed','thu','fri','sat','sun'}))==1,'QueryTools:badInput',...
+    'Error in AddWeekStart: startDay must be the first 3 letters of a day of the week.');
 
 %%
 
@@ -27,24 +34,39 @@ assert(size(data,2)==size(fields,2),'Error in AddWeekStart: DATA and FIELDS must
 % without any changes.
 existWeekStartCol = sum(strcmpi('WeekStart',fields));
 if ~existWeekStartCol
-    if nargin==3
-        startDay='mon';
-    end
 
     temp = cell(size(data,1),1);
     for ii = 1:size(data,1)
-
-        if sum(data{ii,dateCol})<0 %missing dates flagged with -1s
+        theDate = data{ii,dateCol};
+        
+        %check formatting
+        if isnumeric(theDate) && size(theDate,1)==1 && size(theDate,2)==3 && sum(theDate)>0
+            
+            weekStart=datenum(theDate);
+            
+            if weekStart<datenum([1980,1,1])
+                warning('Found a date earlier than Jan 1, 1980 - there may be a formatting error');
+            elseif weekStart>today
+                warning('Found a date that is in the future - there may be a formatting error');
+            end
+            
+            %find the first day of that week
+            n = 0;
+            while ~strcmpi(datestr(weekStart,'ddd'),startDay) && n<7
+                weekStart=weekStart-1;
+                n = n+1; %limit to 7 iterations
+            end
+            [Y,M,D]=datevec(weekStart);
+        elseif sum(theDate)<=0
+            warning('Missing date.');
             Y = -1;
             M = -1;
             D = -1;
-        else
-            weekStart=datenum(data{ii,dateCol});
-            %find the first day of that week
-            while ~strcmpi(datestr(weekStart,'ddd'),startDay)
-                weekStart=weekStart-1;
-            end
-            [Y,M,D]=datevec(weekStart);
+        else %if date is not formatted properly, make the week start -1 -1 -1
+            warning('Error in date conversion.');
+            Y = -1;
+            M = -1;
+            D = -1;
         end
         temp(ii)={[Y,M,D]};
     end

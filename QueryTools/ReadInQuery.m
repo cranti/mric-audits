@@ -20,10 +20,14 @@ function [fields,data] = ReadInQuery(filename)
 % See also AUDITQUERY, ETLAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.2014
-% CVAR 8.29.14
+% CVAR 9.25.14
 
 %%
-assert(logical(exist(filename,'file')),['Error in ReadInQuery: cannot find the results file ',filename]);
+assert(logical(exist(filename,'file')),'QueryTools:fileNotFound',['Error in ReadInQuery: ',filename,' does not exist']);
+
+if ~strcmpi(filename((end-3):end),'.csv')
+   warning(['File name (',filename,') does not end with ''.csv'' - ReadInQuery may not work properly.']); 
+end
 
 fid = fopen(filename);
 
@@ -36,51 +40,77 @@ data={};
 rowIndex=1;
 line = fgetl(fid);
 while ischar(line)
-    tempData = strsplit(line,',','CollapseDelimiters',false); %split out columns using commas - do not collapse delimiters
     
-    for colIndex=1:length(tempData)
-        tempData{colIndex}=sscanf(tempData{colIndex},'%s'); %squeeze out white space 
+    %split out columns using commas - do not collapse delimiters
+    row = strsplit(line,',','CollapseDelimiters',false); 
+    
+    for colIndex=1:length(row)
+        entry = sscanf(row{colIndex},'%s'); %squeeze out white space 
         
         % If the column name includes keyword "array", read in as cell
-        % Convert to numbers if possible
+        % (& convert to numbers if possible). MRIC sandwiches arrays in [ ]
+        % -- remove these if present
         if strfind(lower(fields{colIndex}),'array')
-            %split out protocols using delimiter inserted by python script
-            data{rowIndex,colIndex}=strsplit(tempData{colIndex}(2:end-1),{'###'}); 
-            %convert to number if possible
-            for i=length(data{rowIndex,colIndex})
-                [numVersion]=str2double(data{rowIndex,colIndex}(i)); 
-                if ~isnan(numVersion)
-                    data{rowIndex,colIndex}(i)=numVersion;
+            if strcmpi(entry,'[]')
+                data{rowIndex,colIndex}={};
+            elseif ~isempty(entry)
+                %remove '[' and ']' from beginning and end
+                if strcmp(entry(1),'[')
+                    entry = entry(2:end);
                 end
+                if strcmp(entry(end),']')
+                    entry = entry(1:end-1);
+                end
+
+                %split out protocols using delimiter inserted by python script
+                data{rowIndex,colIndex}=strsplit(entry,{'###'}); 
+
+                %convert to number if possible
+                for i=1:length(data{rowIndex,colIndex})
+                    [numVersion]=str2double(data{rowIndex,colIndex}(i)); 
+                    if ~isnan(numVersion)
+                        data{rowIndex,colIndex}{i}=numVersion;
+                    end
+                end
+            else
+                data{rowIndex,colIndex}={};
             end
-            
         % Process dates -- array as numbers [Y M D]
         % Works for excel and database format (M(M)/D(D)/YY or YYYY-MM-DD)
         elseif strfind(lower(fields{colIndex}),'date')
             
-            if isempty(tempData{colIndex})
+            if isempty(entry)
                 data{rowIndex,colIndex} = [-1 -1 -1]; %if date is missing, flag with -1s
             else
-                temp = strsplit(tempData{colIndex},'/');
-                if length(temp)==3
-                    mo = temp{1};
-                    temp{1} = temp{3}; %year
-                    temp{3} = temp{2};
-                    temp{2} = mo;
-                else
-                    temp = strsplit(tempData{colIndex},'-'); %in the right order
+                try
+                    temp = strsplit(entry,'/');
+                    if length(temp)==3
+                        mo = temp{1};
+                        temp{1} = temp{3}; %year  %TODO: what if year is only 2 digits?
+                        temp{3} = temp{2};
+                        temp{2} = mo;
+                    else
+                        temp = strsplit(entry,'-'); %in the right order
+                    end
+                    if length(temp{1}) == 2
+                        warning('Date had a year that was only 2 digits -- assumed to be in the 2000s, but reformat the dates if this is not true'); 
+                        temp{1} = ['20',temp{1}];
+                    end
+                    temp = cellfun(@str2num,temp);
+                    data{rowIndex,colIndex} = temp;
+                catch
+                    warning(['Date not converted properly. Entry: ',entry]);
+                    data{rowIndex,colIndex} = [-1 -1 -1]; %if date is missing, flag with -1s
                 end
-                temp = cellfun(@str2num,temp);
-                data{rowIndex,colIndex} = temp;
             end
             
-        % Convert data to numbers if possible
+        % Convert data to numbers if possible, or insert place holder 
         else
-            if ~isempty(tempData{colIndex})
+            if ~isempty(entry)
                 %convert to number if possible
-                [numVersion] = str2double(tempData{colIndex}); 
+                [numVersion] = str2double(entry); 
                 if isnan(numVersion)
-                    data{rowIndex,colIndex} = tempData{colIndex};
+                    data{rowIndex,colIndex} = entry;
                 else
                     data{rowIndex,colIndex} = numVersion;
                 end
