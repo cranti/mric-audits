@@ -59,11 +59,11 @@ function weeklyCheck(startdate,enddate)
 % POSSIBLE FUTURE EDITS
 %   > Add phase check that will make sure dates in session match the
 % phase completion date
-%   > Integrity of upload audit
-%   > LIVE- Print out what fellows are in charge of the NONC videos?
+%   > "Integrity of upload" audit?
+%   > LIVE data audit?
 
 % Written by Carolyn Ranti 8.25.2014
-% CVAR 8.29.2014
+% CVAR 9.25.2014
 
 %%
 % dbstop if error
@@ -83,7 +83,8 @@ funcPath = which(nameOfFunc);
 funcPath = funcPath(1:end-length(nameOfFunc));
 cd(funcPath);
 cd ..
-addpath('WeeklyCheck','QueryTools')
+basePathDir = pwd;
+addpath([basePathDir,'/WeeklyCheck'],[basePathDir,'/QueryTools'])
 
 % file names
 resultsDir = [baseResultsDir,startdate,'_',enddate,'/'];
@@ -134,14 +135,13 @@ if processData || runPython
     %do a little processing
     monthAgeCol=strncmpi('Age',sessionFields,3);
     [sessionFields,sessionData] = AddBinnedAge(sessionFields,sessionData,monthAgeCol);
-    colNum=find(cellfun(@(x) ~isempty(strfind(x,'Protocol')),sessionFields));
     %protocol logic
-    [AllProtocols,sProtLogic] = ProtocolLogic(sessionData,colNum);
-    
+    protCol=find(cellfun(@(x) ~isempty(strfind(x,'Protocol')),sessionFields));
+    [sAllProtocols,sProtLogic] = ProtocolLogic(sessionData,protCol);
+   
     %read in phase query
     phaseFilename = [resultsDir,'phase_',startdate,'_',enddate,'.csv'];
     [phaseFields,phaseData] = ReadInQuery(phaseFilename);
-
     
     cd(resultsDir)
     save([startdate,'_',enddate],'sessionFields','sessionData','phaseFields','phaseData','AllProtocols','sProtLogic');
@@ -169,16 +169,26 @@ pIDCol = find(strcmpi('ID',phaseFields));
 pPhaseCol=find(strcmpi('Phase',phaseFields));
 pReqCol=find(strcmpi('Requirement',phaseFields));
 pStatusCol=find(strcmpi('Status',phaseFields));
+pProtCol=find(strcmpi('Protocol',phaseFields));
 %pFullDateCol=find(strcmpi('FulfillmentDate',phaseFields));
-%pProtCol=find(strcmpi('Protocol',phaseFields));
 
 
 
 %% Change the queries a little bit 
-% 1. Take out all wash u from session table
-sWashuProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'wash')),AllProtocols)),2));
+% 1. Take out all wash u and forsyth from session and phase tables
+sWashuProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'wash')),sAllProtocols)),2));
 sessionData=sessionData(~sWashuProtLogic,:);
 sProtLogic=sProtLogic(~sWashuProtLogic,:);
+
+pWashuProtLogic=cellfun(@(x) ~isempty(strfind(x,'wash')),phaseData(:,pProtCol));
+phaseData=phaseData(~pWashuProtLogic,:);
+
+sForsythProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'forsyth')),sAllProtocols)),2));
+sessionData=sessionData(~sForsythProtLogic,:);
+sProtLogic=sProtLogic(~sForsythProtLogic,:);
+
+pForsythProtLogic=cellfun(@(x) ~isempty(strfind(x,'forsyth')),phaseData(:,pProtCol));
+phaseData=phaseData(~pForsythProtLogic,:);
 
 % 2. if the MATLAB ID is empty, copy the individual id over (as a string)
 for i = 1:size(phaseData,1)
@@ -189,10 +199,8 @@ end
 
 % 3. Take out anyone who doesn't have an eye-tracking session
 ETfilter=cellfun(@(x) ~isempty(strfind(x,'Tracking')),phaseData(:,pReqCol));
-eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)); %&... %only matlab ids that were eye-tracked
-    %ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only
-    %eye-tracking protocols %EDIT pretty sure this line wasn't doing
-    %anything... see if it messes up
+eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)) &... %only matlab ids that were eye-tracked
+    ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only eye-tracking protocols %EDIT - check that this works
 phaseData=phaseData(eyetrackedFilter,:);
 
 
@@ -212,7 +220,7 @@ end
 if overwriteFile
 
 fid=fopen(weeklyCheckFile,'w+');
-fprintf(fid,'Query run on:,%s\n\n',queryRunDate);
+fprintf(fid,'Query run on: %s\n\n',queryRunDate);
 fprintf(fid,'Start date:,%s\n',startdate);
 fprintf(fid,'End date:,%s\n',enddate);
 
@@ -241,14 +249,17 @@ schoolAgeQuals=[schoolAgeQuals,sum(schoolAgeQuals)];
 %column totals:
 colTotals=sum([infantQuals;toddlerQuals;schoolAgeQuals],1);
 
+fprintf(fid,'%i out of %i infant sessions had Q>=3\n',sum(infantQuals(4:6)),infantQuals(end));
+fprintf(fid,'%i out of %i toddler sessions had Q>=3\n',sum(toddlerQuals(4:6)),toddlerQuals(end));
+fprintf(fid,'%i out of %i school age sessions had Q>=3\n\n',sum(schoolAgeQuals(4:6)),schoolAgeQuals(end));
 
-fprintf(fid,'Age Group\\Quality, %i, %i, %i, %i, %i, %i,TOTAL\n',0:5);
-fprintf(fid,'Infant (0-5mo), %i, %i, %i, %i, %i, %i, %i\n',infantQuals);
-fprintf(fid,'Toddler (6-54mo), %i, %i, %i, %i, %i, %i, %i\n',toddlerQuals);
-fprintf(fid,'School Age (54+mo), %i, %i, %i, %i, %i, %i, %i\n',schoolAgeQuals);
+fprintf(fid,'Lab\\Quality, %i, %i, %i, %i, %i, %i,TOTAL\n',0:5);
+fprintf(fid,'Infant, %i, %i, %i, %i, %i, %i, %i\n',infantQuals);
+fprintf(fid,'Toddler, %i, %i, %i, %i, %i, %i, %i\n',toddlerQuals);
+fprintf(fid,'School Age, %i, %i, %i, %i, %i, %i, %i\n',schoolAgeQuals);
 fprintf(fid,'TOTAL,%i,%i,%i, %i, %i, %i, %i\n',colTotals);
 
-fprintf(fid,'\n\nAge (months)\\Quality, %i, %i, %i, %i, %i, %i\n',0:5);
+fprintf(fid,'\n\nAge\\Quality, %i, %i, %i, %i, %i, %i\n',0:5);
 fprintf(fid,'%i, %i, %i, %i, %i, %i, %i\n',[unqAges,qualitySummary]'); %transposed bc fprintf goes down columns
 
 
@@ -323,7 +334,7 @@ otherPhasesToCheck=sUnqPeople(IA);
     
 fprintf(fid,'\n\n*******************************\n*** ERROR CHECKING ***\n');
 
-fprintf(fid,'\nNOT UPLOADED:');
+fprintf(fid,'\nNOT UPLOADED:\n');
 toCheck = find(cellfun(@(x) x>0,phaseCheck(:,3)));
 if sum(toCheck)
     fprintf(fid,',Individual,# Sessions Missing,Partial/Complete Phases,Uploaded Sessions (age in months)\n');
@@ -335,7 +346,7 @@ else
 end
 
 
-fprintf(fid,'\nEYE-TRACKING NOT PHASE EDITED:');
+fprintf(fid,'\nEYE-TRACKING NOT PHASE EDITED:\n');
 toCheck = find(cellfun(@(x) ~isempty(x),phaseCheck(:,2)));
 if sum(toCheck) || ~isempty(otherPhasesToCheck)
     
@@ -356,7 +367,7 @@ else
     fprintf(fid,',All good!\n');
 end
 
-fprintf(fid,'\nCOMPENSATION NOT PHASE EDITED:');
+fprintf(fid,'\nCOMPENSATION NOT PHASE EDITED:\n');
 toCheck = find(cellfun(@(x) ~isempty(x),phaseCheck(:,6)));
 if sum(toCheck) || ~isempty(otherPhasesToCheck)
     fprintf(fid,',Individual,Phase(s)\n');
@@ -380,7 +391,7 @@ end
 %%
 %Print all sessions that were run, split by lab
 fprintf(fid,'\n\n*******************************\n*** SESSIONS ***\n');
-fprintf(fid,'(Compare to paper checklists)\n');
+fprintf(fid,'These are all in the session table (compare to paper checklists)\n');
 fprintf(fid,',Month,Day,Case,Fellows\n');
 
 fprintf(fid,'INFANT LAB');
@@ -433,4 +444,4 @@ end
 
 
 cd(origDir)
-rmpath('WeeklyCheck','QueryTools')
+rmpath([basePathDir,'/WeeklyCheck'],[basePathDir,'/QueryTools'])
