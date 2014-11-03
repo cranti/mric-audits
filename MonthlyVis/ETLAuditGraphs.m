@@ -43,7 +43,7 @@ function ETLAuditGraphs(startdate,enddate)
 % - Can use testQueryTools.m to validate scripts in QueryTools/ 
 %
 % - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
-%   replace strsplit with strsplit_CR in ReadInQuery.m.
+%   replace strsplit with strsplit_CR in ReadInQuery.m and AuditQuery.m
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 

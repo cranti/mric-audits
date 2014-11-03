@@ -57,13 +57,11 @@ function weeklyCheck(startdate,enddate)
 % See also READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC
 
 % POSSIBLE FUTURE EDITS
-%   > Add phase check that will make sure dates in session match the
-% phase completion date
 %   > "Integrity of upload" audit?
 %   > LIVE data audit?
 
 % Written by Carolyn Ranti 8.25.2014
-% CVAR 9.25.2014
+% CVAR 10.6.2014
 
 %%
 % dbstop if error
@@ -144,7 +142,7 @@ if processData || runPython
     [phaseFields,phaseData] = ReadInQuery(phaseFilename);
     
     cd(resultsDir)
-    save([startdate,'_',enddate],'sessionFields','sessionData','phaseFields','phaseData','AllProtocols','sProtLogic');
+    save([startdate,'_',enddate],'sessionFields','sessionData','phaseFields','phaseData','sAllProtocols','sProtLogic');
 else
     cd(resultsDir)
     load([startdate,'_',enddate])
@@ -284,9 +282,8 @@ phaseCheck(:,1) = pUnqPeople;
 %  3. # sessions not uploaded
 %  4. All phases in phase query
 %  5. Binned ages in session query
-%  6. Compensation not phase edited 
+%  6. Compensation not phase edited - NOT USED AS OF 10/6/2014
 
-% EDIT: add check to see if dates match (eye-tracking and compensation)
 
 for i=1:length(pUnqPeople)
     person = pUnqPeople(i);
@@ -319,7 +316,7 @@ for i=1:length(pUnqPeople)
     phaseCheck{i,4} = strjoin(tempPhase(tempETFilter,pPhaseCol)','; ');
     phaseCheck{i,5} = strjoin(cellfun(@num2str,tempSess(:,sBinAgeCol),'UniformOutput',false)','; ');
         
-    % Compensation phases that weren't started
+    % Compensation phases that weren't started - NOT USED AS OF 10/6/2014
     notCompPhaseEdited=cellfun(@(x) strcmpi('not-started',x),tempPhase(:,pStatusCol));
     phaseCheck{i,6}=strjoin(tempPhase(notCompPhaseEdited&tempCompFilter,pPhaseCol)');
 
@@ -367,26 +364,27 @@ else
     fprintf(fid,',All good!\n');
 end
 
-fprintf(fid,'\nCOMPENSATION NOT PHASE EDITED:\n');
-toCheck = find(cellfun(@(x) ~isempty(x),phaseCheck(:,6)));
-if sum(toCheck) || ~isempty(otherPhasesToCheck)
-    fprintf(fid,',Individual,Phase(s)\n');
-    
-    if sum(toCheck)
-        for ii=toCheck' 
-            fprintf(fid,',%s,%s\n',phaseCheck{ii,1},phaseCheck{ii,6});
-        end
-    end
-    if ~isempty(otherPhasesToCheck)
-        for ii=1:size(otherPhasesToCheck,1)
-            tempBinAges=sessionData(strcmpi(otherPhasesToCheck{ii},sessionData(:,sPersonCol)),sBinAgeCol);
-            tempBinAges=strjoin(cellfun(@num2str,tempBinAges,'UniformOutput',false)');
-            fprintf(fid,',%s,%s,**phase = binned age from uploaded session\n',otherPhasesToCheck{ii},tempBinAges);
-        end
-    end
-else
-    fprintf(fid,',All good!\n');
-end
+% REMOVED on 10/6/2014
+% fprintf(fid,'\nCOMPENSATION NOT PHASE EDITED:\n');
+% toCheck = find(cellfun(@(x) ~isempty(x),phaseCheck(:,6)));
+% if sum(toCheck) || ~isempty(otherPhasesToCheck)
+%     fprintf(fid,',Individual,Phase(s)\n');
+%     
+%     if sum(toCheck)
+%         for ii=toCheck' 
+%             fprintf(fid,',%s,%s\n',phaseCheck{ii,1},phaseCheck{ii,6});
+%         end
+%     end
+%     if ~isempty(otherPhasesToCheck)
+%         for ii=1:size(otherPhasesToCheck,1)
+%             tempBinAges=sessionData(strcmpi(otherPhasesToCheck{ii},sessionData(:,sPersonCol)),sBinAgeCol);
+%             tempBinAges=strjoin(cellfun(@num2str,tempBinAges,'UniformOutput',false)');
+%             fprintf(fid,',%s,%s,**phase = binned age from uploaded session\n',otherPhasesToCheck{ii},tempBinAges);
+%         end
+%     end
+% else
+%     fprintf(fid,',All good!\n');
+% end
 
 %%
 %Print all sessions that were run, split by lab

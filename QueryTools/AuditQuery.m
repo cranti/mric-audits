@@ -61,11 +61,13 @@ function [fields,data] = AuditQuery(resultsDir,baseQueryFile,varargin)
 %   Change the default directories (top of script)
 %   Make sure flexibleQuery.py exists on computer, and the script knows where
 %       to look for it.
+%   NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
+%   replace strsplit with strsplit_CR
 %
 % See also: READINQUERY, ETLAUDITGRAPHS, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.14
-% CVAR 9.5.2014
+% CVAR 9.25.2014
 
 %%
 origDir = pwd;

@@ -123,7 +123,7 @@ def print_query(csv_writer,queryResult,keyOrder):
     for row in queryResult:
         ordered_values = [row[key] for key in keyOrder]
         csv_writer.writerow(ordered_values)
-        #EDIT! try/catch UnicodeEncodeError
+        #TODO - catch UnicodeEncodeError
     return
 
 def sessionTableQuery(fetch,filename,startdate,enddate):
