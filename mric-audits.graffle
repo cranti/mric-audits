@@ -26,7 +26,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2014-09-08 17:09:02 +0000</string>
+	<string>2014-11-18 14:33:03 +0000</string>
 	<key>Modifier</key>
 	<string>Eye Tracking Lab</string>
 	<key>NotesVisible</key>
@@ -125,7 +125,7 @@
 			<key>ColumnSpacing</key>
 			<real>36</real>
 			<key>DisplayScale</key>
-			<string>1 0/72 in = 1 0/72 in</string>
+			<string>1 0/72 in = 1.0000 in</string>
 			<key>GraphicsList</key>
 			<array>
 				<dict>
@@ -233,8 +233,8 @@ or\
 					<integer>121</integer>
 					<key>Points</key>
 					<array>
-						<string>{576.45966965695845, 251.78171802951584}</string>
-						<string>{554.42971013092551, 282.59032949423272}</string>
+						<string>{576.56915201929814, 251.78235127794198}</string>
+						<string>{554.63986460312015, 282.59196203560981}</string>
 					</array>
 					<key>Style</key>
 					<dict>
@@ -263,8 +263,6 @@ or\
 					<integer>120</integer>
 					<key>Shape</key>
 					<string>Rectangle</string>
-					<key>Style</key>
-					<dict/>
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
@@ -292,8 +290,8 @@ or\
 					<integer>119</integer>
 					<key>Points</key>
 					<array>
-						<string>{372.02042063502165, 130.49999996616936}</string>
-						<string>{372.00493936285142, 184.50000012715776}</string>
+						<string>{372.02671952511821, 130.49999999999716}</string>
+						<string>{372.0248438556236, 184.49999999968963}</string>
 					</array>
 					<key>Style</key>
 					<dict>
@@ -380,11 +378,11 @@ or\
 \b rotateXLabels.m 
 \b0 (for SessionAuditGraphs.m, RunAudtGraphs.m)
 \b \
+
+\b0 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
-\b0 \cf0 \
-
-\fs26 To run in MATLAB2012a:
+\fs26 \cf0 To run in MATLAB2012a:
 \fs24 \
 - Replace strsplit() with 
 \b strsplit_CR
@@ -680,8 +678,8 @@ or\
 					<integer>74</integer>
 					<key>Points</key>
 					<array>
-						<string>{422.12014263229514, 130.2212765370524}</string>
-						<string>{533.4272460815863, 185.15266702209846}</string>
+						<string>{422.04372277851184, 130.22155026940746}</string>
+						<string>{533.18056865739118, 185.15332635199923}</string>
 					</array>
 					<key>Style</key>
 					<dict>
@@ -722,7 +720,7 @@ or\
 \b0 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
-\fs24 \ul Input:\ulnone  dirToSave, graphTitle, fields, data, protocols}</string>
+\fs24 \cf0 \ul \ulc0 Input:\ulnone  dirToSave, graphTitle, fields, data, protocols}</string>
 					</dict>
 				</dict>
 				<dict>
@@ -1507,7 +1505,7 @@ or\
 \f0\b\fs26 \cf0 ReadInQuery.m
 \b0\fs24 \
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
-\ul Input\ulnone : Results_query.csv\
+\cf0 \ul \ulc0 Input\ulnone : Results_query.csv\
 \ul Output\ulnone : fields, data}</string>
 					</dict>
 				</dict>
@@ -1578,7 +1576,8 @@ or\
 
 \f0\b\fs26 \cf0 flexibleQuery.py
 \b0\fs24 \
-\ul Input:\ulnone  queryFile, resultsDir}</string>
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
+\cf0 \ul \ulc0 Input:\ulnone  queryFile, resultsDir}</string>
 					</dict>
 				</dict>
 				<dict>
@@ -1593,8 +1592,8 @@ or\
 					<integer>37</integer>
 					<key>Points</key>
 					<array>
-						<string>{326.33336373398902, 130.23804489576145}</string>
-						<string>{225.62334004894061, 184.76067074960505}</string>
+						<string>{326.41542709983429, 130.23837839096461}</string>
+						<string>{225.8867673788221, 184.76147004456243}</string>
 					</array>
 					<key>Style</key>
 					<dict>
@@ -1669,7 +1668,7 @@ or\
 \f0\b\fs26 \cf0 AuditQuery.m\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
-\b0\fs24 \ul Input\ulnone : resultsDir, baseQueryFile, 
+\b0\fs24 \cf0 \ul \ulc0 Input\ulnone : resultsDir, baseQueryFile, 
 \i [strings to fill in base query]
 \i0 \
 \ul Output\ulnone : fields, data}</string>
@@ -1694,7 +1693,8 @@ or\
 
 \f0\b\fs28 \cf0 ETLAuditGraphs.m
 \b0\fs24 \
-\ul Input\ulnone : startdate, enddate}</string>
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
+\cf0 \ul \ulc0 Input\ulnone : startdate, enddate}</string>
 					</dict>
 				</dict>
 				<dict>
@@ -1773,7 +1773,7 @@ or\
 			<key>RowSpacing</key>
 			<real>36</real>
 			<key>SheetTitle</key>
-			<string>Canvas 1</string>
+			<string>Diagram</string>
 			<key>UniqueID</key>
 			<integer>1</integer>
 			<key>VPages</key>
@@ -3362,8 +3362,9 @@ or\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
 \f0\b\fs26 \cf0 Directory \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
 
-\i\b0\fs22 scripts that need full path to this dir}</string>
+\i\b0\fs22 \cf0 scripts that need full path to this dir}</string>
 					</dict>
 				</dict>
 				<dict>
@@ -4384,7 +4385,7 @@ or\
 \f0\b\fs28 \cf0 Graphs/\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
 
-\i\b0\fs22 ETLAuditGraphs.m, \cf0 AuditQuery.m}</string>
+\i\b0\fs22 \cf0 ETLAuditGraphs.m, AuditQuery.m}</string>
 					</dict>
 				</dict>
 				<dict>
@@ -4484,11 +4485,15 @@ or\
 		<array>
 			<dict>
 				<key>name</key>
-				<string>Canvas 1</string>
+				<string>Diagram</string>
+			</dict>
+			<dict>
+				<key>name</key>
+				<string>Folder Organization</string>
 			</dict>
 		</array>
 		<key>Frame</key>
-		<string>{{71, 167}, {1227, 891}}</string>
+		<string>{{71, 167}, {931, 891}}</string>
 		<key>ListView</key>
 		<true/>
 		<key>OutlineWidth</key>
@@ -4502,20 +4507,20 @@ or\
 		<key>SidebarWidth</key>
 		<integer>120</integer>
 		<key>VisibleRegion</key>
-		<string>{{-748, -221.99999999999997}, {2251.5463253430339, 1550.5154181849462}}</string>
+		<string>{{-25, 0}, {806.18554323180069, 775.25770909247319}}</string>
 		<key>Zoom</key>
-		<real>0.48500001430511475</real>
+		<real>0.97000002861022949</real>
 		<key>ZoomValues</key>
 		<array>
 			<array>
-				<string>Canvas 1</string>
+				<string>Diagram</string>
 				<real>1</real>
 				<real>0.62999999523162842</real>
 			</array>
 			<array>
 				<string>Folder Organization</string>
-				<real>0.48500001430511475</real>
 				<real>0.97000002861022949</real>
+				<real>0.48500001430511475</real>
 			</array>
 		</array>
 	</dict>
