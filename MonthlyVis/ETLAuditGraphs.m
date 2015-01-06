@@ -1,10 +1,12 @@
-function ETLAuditGraphs(startdate,enddate)
+function ETLAuditGraphs(startdate,enddate,doUnf)
 %ETLAuditGraphs - Audit eye-tracking data in MRIC and visualize the
 %results.
 % 
-% Usage:    ETLAuditGraphs(startdate,enddate) -- runs the queries filtered
-%               by the specified date range. Also runs a session table
-%               query that is NOT filtered by dates. 
+% Usage:    ETLAuditGraphs(startdate,enddate,[1 or 0]) -- runs the queries
+%               filtered by the specified date range. Optional 3rd input
+%               allows user to specify whether to run unfiltered version
+%               of the session query (i.e. returning the entire session
+%               table).
 %           ETLAuditGraphs() -- only runs the session table query that is
 %               unfiltered by date range.
 %
@@ -20,11 +22,11 @@ function ETLAuditGraphs(startdate,enddate)
 %       /Users/etl/Desktop/DataQueries/Graphs/
 %
 % Figures are created separately for different protocol groupings (i.e.
-% infant protocols, toddler protocols, and school age protocols), and they
-% are saved in separate subdirectories
+% infant protocols, toddler protocols, and school age protocols), as well
+% as for each protocol on its own. They are saved in separate
+% subdirectories.
 % * Remember to update the list of protocols over time (see the variable
 % graphLoop, which is set near the top of the script).
-%
 %
 %
 % *** If running the script on a computer for the first time ***
@@ -47,30 +49,41 @@ function ETLAuditGraphs(startdate,enddate)
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
+
 % TODO
-% > Assessments query
+% > Move text files and results files to a "files" folder
+% > Analysis types x protocol 
 % > Run query -- get around the limit to the number of rows returned
-% > Check protocol list w/ WJ
 
 % Written by Carolyn Ranti 8.18.2014
-% CVAR 9.25.14
+% CVAR 1.5.15
 
 %%
 home
 disp('*** ETLAuditGraphs ***')
 
 %% CHANGE FOR INITIAL SET UP: directories and a loop to go through all protocol types
-baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; %where base queries are saved
-mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; %subdirectories will be created (named by date)
+baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; % where base queries are saved
+mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; % subdirectories will be created (named by date)
 
-%TODO - check all of these w/ WJ. also, where does 'infant-sibs.infant-sibs-high-risk-older-sib-2011-12' belong? 
-graphLoop = struct('dir',{'InfantGraphs','ToddlerGraphs','SchoolAgeGraphs'},...
-    'title',{'Infant','Toddler','School Age'},...
-    'protocol',{{'ace-center-2012.eye-tracking-0-36m-2012-11';'infant-sibs.infant-sibs-high-risk-2011-12';'infant-sibs.infant-sibs-low-risk-2011-12'}... 
-                {'toddler.toddler-asd-dd-2011-07','toddler.toddler-asd-dd-2012-11','toddler.toddler-td-2011-07'}...
-                {'school-age.school-age-asf-fellowship-asd-dd-2012-07','school-age.school-age-asf-fellowship-td-2012-07'}});
+%TODO - save this in a mat file
+field_names = {'dir', 'title', 'protocol'};
+setup_loop = {'AllInfants', 'All Infant Protocols', {'ace-center-2012.eye-tracking-0-36m-2012-11';'infant-sibs.infant-sibs-high-risk-2011-12';'infant-sibs.infant-sibs-low-risk-2011-12'};
+            'AllToddlers', 'All Toddler Protocols', {'toddler.toddler-asd-dd-2011-07','toddler.toddler-asd-dd-2012-11','toddler.toddler-td-2011-07','wash-u.toddler-twin-longitudinal-nontwinsib-2013-06','wash-u.toddler-twin-longitudinal-twinsib-2013-06'};
+            'AllSchoolAge', 'All School Age Protocols', {'school-age.school-age-asf-fellowship-asd-dd-2012-07','school-age.school-age-asf-fellowship-td-2012-07'};
+            'ace-center-2012.eye-tracking-0-36m-2012-11', 'ACE Eye Tracking 0-36M 2012-11', {'ace-center-2012.eye-tracking-0-36m-2012-11'};
+            'infant-sibs.infant-sibs-high-risk-2011-12', 'Infant Sibs High Risk 2011-12', {'infant-sibs.infant-sibs-high-risk-2011-12'};
+            'infant-sibs.infant-sibs-low-risk-2011-12', 'Infant Sibs Low Risk 2011-12', {'infant-sibs.infant-sibs-low-risk-2011-12'};
+            'toddler.toddler-asd-dd-2011-07', 'Toddler ASD-DD 2011-07', {'toddler.toddler-asd-dd-2011-07'};
+            'toddler.toddler-asd-dd-2012-11', 'Toddler ASD-DD 2012-12', {'toddler.toddler-asd-dd-2012-11'};
+            'toddler.toddler-td-2011-07', 'Toddler TD 2011-07', {'toddler.toddler-td-2011-07'};
+            'school-age.school-age-asf-fellowship-asd-dd-2012-07', 'School Age ASF Fellowship ASD-DD 2012-07', {'school-age.school-age-asf-fellowship-asd-dd-2012-07'};
+            'school-age.school-age-asf-fellowship-td-2012-07', 'School Age ASF Fellowship TD 2012-07', {'school-age.school-age-asf-fellowship-td-2012-07'};
+            'wash-u.toddler-twin-longitudinal-nontwinsib-2013-06', 'Wash U Toddler Twin Longitudinal Non-Twin Sib 2013-06', {'wash-u.toddler-twin-longitudinal-nontwinsib-2013-06'};
+            'wash-u.toddler-twin-longitudinal-twinsib-2013-06', 'Wash U Toddler Twin Longitudinal Twin Sib 2013-06', {'wash-u.toddler-twin-longitudinal-twinsib-2013-06'};
+};
+graphLoop = cell2struct(setup_loop, field_names, 2);
 
-            
             
 %% Add things to the path
 origDir = pwd;
@@ -82,40 +95,51 @@ cd ..
 basePathDir = pwd;
 addpath([basePathDir,'/MonthlyVis'],[basePathDir,'/QueryTools'])
 
+
 %% Select which queries to run
+
+%default is to do 'em all
+doSessionQuery = 1; 
+doRunQuery = 1;
+doUnfSessionQuery = 1;
+doUnfRunQuery = 1;
+
 if nargin==0
     disp(' ');
-    disp('No dates entered -- will not run the queries that require a date range.');
+    disp('No dates entered -- only running unfiltered.');
     disp(' ');
     doSessionQuery = 0;
     doRunQuery = 0;
-else
-    doSessionQuery = 1; 
-    doRunQuery = 1;
+    
+elseif nargin==3
+    doUnfSessionQuery = doUnf;
+%     doUnfRunQuery = doUnf;
 end
 
-doUnfSessionQuery = 1;
-doUnfRunQuery = 0; %TODO - not running unfiltered run query yet
 
+%% 
 disp('Let''s visualize some data!')
+disp([' ** NOTE: You''ll be prompted to log in to MRIC ',num2str(sum([doSessionQuery,doRunQuery,doUnfSessionQuery,doUnfRunQuery])),' time(s).']);
+disp(' ');
 
-disp(' ');
-disp('NOTE:');
-disp(['   You''ll be prompted to log in to MRIC ',num2str(sum([doSessionQuery,doRunQuery,doUnfSessionQuery,doUnfRunQuery])),' time(s).']);
-disp(' ');
+
 %% Session query
+
+resultsDir = [mainResultsDir,startdate,'_',enddate,'/'];
+textResultsDir = [resultsDir, 'files/'];
+
 if doSessionQuery
-    baseQueryFile = [baseQueryDir,'sessionQuery.txt'];
-    resultsDir = [mainResultsDir,startdate,'_',enddate,'/'];
     
-    [fields,data] = AuditQuery(resultsDir,baseQueryFile,startdate,enddate);
+    %QUERY MRIC
+    baseQueryFile = [baseQueryDir,'sessionQuery.txt'];
+    [fields,data] = AuditQuery(textResultsDir, baseQueryFile, startdate, enddate);
+    
     % Add binned ages column
     ageCol = strncmpi('Age',fields,3);
     [fields,data] = AddBinnedAge(fields,data,ageCol);
     % Add week start column
     dateCol = strcmpi('Date',fields);
     [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
-    
     
     for ii=1:length(graphLoop)
         dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
@@ -125,6 +149,7 @@ if doSessionQuery
 
         SessionAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
     end
+    
     close all
     cd(origDir)
 end
@@ -133,9 +158,8 @@ end
 %% Run query
 if doRunQuery
     baseQueryFile=[baseQueryDir,'runQuery.txt']; 
-    resultsDir = [mainResultsDir,startdate,'_',enddate,'/'];
     
-    [fields,data] = AuditQuery(resultsDir,baseQueryFile,startdate,enddate);
+    [fields,data] = AuditQuery(textResultsDir,baseQueryFile,startdate,enddate);
     % Add binned ages column
     ageCol = strncmpi('Age',fields,3);
     [fields,data] = AddBinnedAge(fields,data,ageCol);
@@ -157,11 +181,14 @@ end
 
 
 %% Session query for ENTIRE session table
+
+UNFresultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
+UNFtextResultsDir = [UNFresultsDir,'/files/'];
+
 if doUnfSessionQuery
     baseQueryFile=[baseQueryDir,'sessionQuery_noFilters.txt']; 
-    resultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
     
-    [fields,data] = AuditQuery(resultsDir,baseQueryFile);
+    [fields,data] = AuditQuery(UNFtextResultsDir,baseQueryFile);
     % Add binned ages column
     ageCol = strncmpi('Age',fields,3);
     [fields,data] = AddBinnedAge(fields,data,ageCol);
@@ -171,7 +198,7 @@ if doUnfSessionQuery
     
     
     for ii=1:length(graphLoop)
-        dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
+        dirToSaveGraphs=[UNFresultsDir,graphLoop(ii).dir];
         if ~exist(dirToSaveGraphs,'dir')
             mkdir(dirToSaveGraphs)
         end
@@ -183,34 +210,30 @@ if doUnfSessionQuery
 end
 
 
-%% Run query for ENTIRE run table
-if doUnfRunQuery
-    baseQueryFile = [baseQueryDir,'runQuery_noFilters.txt']; 
-    resultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
-    
-    [fields,data] = AuditQuery(resultsDir,baseQueryFile);
-    % Add binned ages column
-    ageCol = strncmpi('Age',fields,3);
-    [fields,data] = AddBinnedAge(fields,data,ageCol);
-    % Add week start column
-    dateCol = strcmpi('Date',fields);
-    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
-    
-    for ii=1:length(graphLoop)
-        dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
-        if ~exist(dirToSaveGraphs,'dir')
-            mkdir(dirToSaveGraphs)
-        end
-
-        RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
-    end
-    close all
-    cd(origDir)
-end
-
-%% Assessment queries
-% #8 	Assessments -- expected vs actual for each assessment
-
+%% Run query for ENTIRE run table - TODO (not currently working)
+% if doUnfRunQuery
+%     baseQueryFile = [baseQueryDir,'runQuery_noFilters.txt']; 
+%     resultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
+%     
+%     [fields,data] = AuditQuery(UNFtextResultsDir,baseQueryFile);
+%     % Add binned ages column
+%     ageCol = strncmpi('Age',fields,3);
+%     [fields,data] = AddBinnedAge(fields,data,ageCol);
+%     % Add week start column
+%     dateCol = strcmpi('Date',fields);
+%     [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+%     
+%     for ii=1:length(graphLoop)
+%         dirToSaveGraphs=[UNFresultsDir,graphLoop(ii).dir];
+%         if ~exist(dirToSaveGraphs,'dir')
+%             mkdir(dirToSaveGraphs)
+%         end
+% 
+%         RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
+%     end
+%     close all
+%     cd(origDir)
+% end
 
 %% Remove extra things from path
-rmpath([basePathDir,'/MonthlyVis'],[basePathDir,'/QueryTools'])
+rmpath([basePathDir,'/MonthlyVis'], [basePathDir,'/QueryTools'])
