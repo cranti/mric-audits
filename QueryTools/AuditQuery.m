@@ -59,15 +59,15 @@ function [fields,data] = AuditQuery(resultsDir,baseQueryFile,varargin)
 %
 % INITIAL SCRIPT SET UP:   
 %   Change the default directories (top of script)
-%   Make sure flexibleQuery.py exists on computer, and the script knows where
-%       to look for it.
+%   Make sure flexibleQuery.py exists on computer, and the script knows
+%       where to look for it.
 %   NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
-%   replace strsplit with strsplit_CR
+%       replace strsplit with strsplit_CR
 %
 % See also: READINQUERY, ETLAUDITGRAPHS, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.14
-% CVAR 1.5.2014 (changed path)
+% CVAR 1.6.2015 (minor)
 
 %%
 origDir = pwd;
@@ -166,8 +166,7 @@ if runPython
     disp('----------------------------------')
     cd(origDir)
     
-    % Produce error if the results file doesn't exist after running the
-    % python script
+    % Produce error if the results file doesn't exist after running python script
     if ~exist(resultsFile,'file')
         error('QueryTools:fileNotFound',['Error in AuditQuery: Cannot find results file: ',resultsFile])
     end
@@ -198,4 +197,5 @@ else
     disp(['Matfile was found with the results name (',matFileName,'). Query was not reprocessed.']);
 end
 
+%%
 cd(origDir)

@@ -9,7 +9,7 @@
 %   ReadInQuery.m
 %
 % To do (in entire suite):
-%   change file validation  -- don't use fid == -1, ust exist() first
+%   change file validation  -- don't use fid == -1, use exist() first
 %   open files as read only
 %   write log files?
 %   error catching in master script --> if one throws an error, do I want
