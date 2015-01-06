@@ -67,13 +67,13 @@ function [fields,data] = AuditQuery(resultsDir,baseQueryFile,varargin)
 % See also: READINQUERY, ETLAUDITGRAPHS, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
 % Written by Carolyn Ranti 8.15.14
-% CVAR 9.25.2014
+% CVAR 1.5.2014 (changed path)
 
 %%
 origDir = pwd;
 
 % DEFAULT DIRECTORIES:
-pythonDir = '/Users/etl/Desktop/mric-audits/QueryTools/';
+pythonDir = '/Users/etl/Desktop/GitCode/mric-audits/QueryTools/';
 
 % If full paths aren't passed in, script looks in these folders
 resultsDirBasePath = '/Users/etl/Desktop/DataQueries/Graphs/';
