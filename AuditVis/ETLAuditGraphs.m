@@ -44,14 +44,12 @@ function ETLAuditGraphs(startdate,enddate,doUnf)
 %       the Python scripts
 % - Can use testQueryTools.m to validate scripts in QueryTools/ 
 %
-% - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
+% - NOTE: to make this script compatible with P&T computer (MATLAB2012),
 %   replace strsplit with strsplit_CR in ReadInQuery.m and AuditQuery.m
 %
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
-
 % TODO
-% > Move text files and results files to a "files" folder
 % > Analysis types x protocol 
 % > Run query -- get around the limit to the number of rows returned
 
@@ -93,7 +91,7 @@ funcPath = funcPath(1:end-length(nameOfFunc));
 cd(funcPath);
 cd ..
 basePathDir = pwd;
-addpath([basePathDir,'/MonthlyVis'],[basePathDir,'/QueryTools'])
+addpath([basePathDir,'/AuditVis'],[basePathDir,'/QueryTools'])
 
 
 %% Select which queries to run
@@ -148,9 +146,9 @@ if doSessionQuery
         end
 
         SessionAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
+        close all
     end
     
-    close all
     cd(origDir)
 end
 
@@ -174,8 +172,9 @@ if doRunQuery
         end
 
         RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
+        close all
     end
-    close all
+    
     cd(origDir)
 end
 
@@ -236,4 +235,4 @@ end
 % end
 
 %% Remove extra things from path
-rmpath([basePathDir,'/MonthlyVis'], [basePathDir,'/QueryTools'])
+rmpath([basePathDir,'/AuditVis'], [basePathDir,'/QueryTools'])
