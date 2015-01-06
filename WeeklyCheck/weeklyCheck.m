@@ -61,7 +61,7 @@ function weeklyCheck(startdate,enddate)
 %   > LIVE data audit?
 
 % Written by Carolyn Ranti 8.25.2014
-% CVAR 10.6.2014
+% CVAR 1.5.2015
 
 %%
 % dbstop if error
@@ -70,7 +70,7 @@ disp('--------------------------------------------------------------------------
 disp('                                           Running weeklyCheck.m                                          ')
 
 %% CHANGE FOR INITIAL SET UP: directories
-pythonDir = '/Users/etl/Desktop/mric-audits/QueryTools';
+pythonDir = '/Users/etl/Desktop/GitCode/mric-audits/QueryTools';
 baseResultsDir = '/Users/etl/Desktop/DataQueries/WeeklyChecks/';
 
 %%
@@ -207,7 +207,7 @@ cd(resultsDir)
 if exist(weeklyCheckFile,'file') && ~runPython
     disp(' ');
     disp('%%%%');
-    fprintf(['A summary for this date range already exists in the following location:\n\t',resultsDir,weeklyCheckFile]);
+    fprintf(['A summary for this date range already exists in the following location:\n\t',weeklyCheckFile]);
     overwriteFile=strcmpi('y',input('\nDo you want to overwrite the file? (y/n): ','s'));
     disp('%%%%');
     disp(' ');
@@ -364,28 +364,6 @@ else
     fprintf(fid,',All good!\n');
 end
 
-% REMOVED on 10/6/2014
-% fprintf(fid,'\nCOMPENSATION NOT PHASE EDITED:\n');
-% toCheck = find(cellfun(@(x) ~isempty(x),phaseCheck(:,6)));
-% if sum(toCheck) || ~isempty(otherPhasesToCheck)
-%     fprintf(fid,',Individual,Phase(s)\n');
-%     
-%     if sum(toCheck)
-%         for ii=toCheck' 
-%             fprintf(fid,',%s,%s\n',phaseCheck{ii,1},phaseCheck{ii,6});
-%         end
-%     end
-%     if ~isempty(otherPhasesToCheck)
-%         for ii=1:size(otherPhasesToCheck,1)
-%             tempBinAges=sessionData(strcmpi(otherPhasesToCheck{ii},sessionData(:,sPersonCol)),sBinAgeCol);
-%             tempBinAges=strjoin(cellfun(@num2str,tempBinAges,'UniformOutput',false)');
-%             fprintf(fid,',%s,%s,**phase = binned age from uploaded session\n',otherPhasesToCheck{ii},tempBinAges);
-%         end
-%     end
-% else
-%     fprintf(fid,',All good!\n');
-% end
-
 %%
 %Print all sessions that were run, split by lab
 fprintf(fid,'\n\n*******************************\n*** SESSIONS ***\n');
@@ -440,6 +418,22 @@ else
 disp('---------------------------------------------------Done---------------------------------------------------')
 end
 
-
 cd(origDir)
 rmpath([basePathDir,'/WeeklyCheck'],[basePathDir,'/QueryTools'])
+
+
+%% Create audit graphs for the last 12 weeks:
+
+%find the start of the last week (monday before enddate):
+lastWeekStart = datenum(enddate);
+n = 0;
+while ~strcmpi(datestr(lastWeekStart,'ddd'),'mon') && n<7
+    lastWeekStart=lastWeekStart-1;
+    n = n+1; %limit to 7 iterations
+end
+
+%subtract 11 weeks from that date
+graphStart = datestr(datenum(lastWeekStart) - 77,'yyyy-mm-dd');
+
+% create the audit graphs for the last 12 weeks
+ETLAuditGraphs(graphStart, enddate, 0); %last input = don't run unfiltered query
