@@ -1,0 +1,4 @@
+*.pyc
+*~
+**/QueryTools/TestFiles/*
+**/QueryTools/testQueryTools.m
