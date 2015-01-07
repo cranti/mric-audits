@@ -1,6 +1,6 @@
 Set of tools for running MRIC queries.
 
-#h2 Main scripts
+## Main scripts
 **weeklyCheck:** Runs ETL weekly audits on the MRIC database for a
 specified date range and saves a csv summary. Also creates a 
 series of graphs using ETLAuditGraphs.
@@ -8,7 +8,7 @@ series of graphs using ETLAuditGraphs.
 **ETLAuditGraphs:** Audit eye-tracking data in MRIC and visualize the
 results.
 
-#h2 Notes
+## Notes
 + Remember to update the list of protocols in ETLAuditGraphs.m to ensure
 that it matches MRIC. 
 
