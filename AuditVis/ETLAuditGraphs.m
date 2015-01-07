@@ -28,25 +28,6 @@ function ETLAuditGraphs(startdate,enddate,doUnf)
 % * Remember to update the list of protocols over time (see the variable
 % graphLoop, which is set near the top of the script).
 %
-%
-% *** If running the script on a computer for the first time ***
-% - Create folders for base queries and results
-% - Change default directories (at top of this script)
-% - Change directories in AuditQuery.m (pythonDir and the defaults)
-% - The way the path is currently being set, the folder organization should
-%   be as follows:
-%       > In some parent directory, there should be two folders:
-%               MonthlyVis/     QueryTools/
-%       > This script should be saved in MonthlyVis/
-%       > Recommended that SessionAuditGraphs and RunAuditGraphs are also
-%       saved in MonthlyVis/
-%       > All supporting scripts should be saved in QueryTools/, including
-%       the Python scripts
-% - Can use testQueryTools.m to validate scripts in QueryTools/ 
-%
-% - NOTE: to make this script compatible with P&T computer (MATLAB2012),
-%   replace strsplit with strsplit_CR in ReadInQuery.m and AuditQuery.m
-%
 % See also: AUDITQUERY, READINQUERY, SESSIONAUDITGRAPHS, RUNAUDITGRAPHS
 
 % TODO

@@ -1,6 +1,7 @@
 function weeklyCheck(startdate, enddate, visualize)
 %WEEKLYCHECK Runs ETL weekly audits on the MRIC database for a
-% specified date range and saves a csv summary.
+% specified date range and saves a csv summary. Also creates a 
+% series of graphs using ETLAuditGraphs.
 %
 % INPUTS:
 %       startdate (str) - Beginning of date range for the query (YYYY-MM-DD)
@@ -41,22 +42,6 @@ function weeklyCheck(startdate, enddate, visualize)
 %   > If the query has been run and/or the summary already exists, the
 %     user will be asked whether they want to overwrite those files.
 %   > The script prints where results have been saved to the command line.
-%
-% *** If running the script on a computer for the first time ***
-% - Change the variable pythonDir (where weeklyCheckQuery.py is saved) and
-%   baseResultsDir (where a subdir will be created with all of the results)
-% - The way the path is currently being set, the folder organization should
-%   be as follows:
-%       > In some parent directory, there should be two folders:
-%               WeeklyCheck/     QueryTools/
-%       > This script should be saved in WeeklyCheck/
-%       > All supporting scripts should be saved in QueryTools/, including
-%       the Python scripts
-%
-% - NOTE: to make this script compatible with P&T computer (ie MATLAB2012),
-%   replace strsplit and strjoin in supporting scripts with strsplit_CR and
-%   strjoin_CR, respectively. This script uses strjoin, and I believe only
-%   ReadInQuery uses strsplit.
 %
 % See also READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC, ETLAUDITGRAPHS
 
