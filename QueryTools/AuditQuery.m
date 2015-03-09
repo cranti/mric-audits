@@ -111,7 +111,11 @@ end
 % File naming
 newQueryFile = [resultsDir,baseQueryName,'.txt']; 
 resultsFile = [resultsDir,'Results_',baseQueryName,'.csv'];
-matFileName = ['Results_',baseQueryName];
+matFileName = [resultsDir,'Results_',baseQueryName,'.mat'];
+
+
+%% Run query (python script)
+runPython = 1;
 
 % if results file already exists, ask user if they want to overwrite
 if exist(resultsFile,'file')
@@ -119,17 +123,13 @@ if exist(resultsFile,'file')
     disp(' ')
     disp(['A results file already exists with the name specified (',resultsFile,')']);
     runPython=strcmpi('y',input('Would you like to run the query again and overwrite existing files? (y/n): ','s'));
-% or check for the existence of the base query and run the python script
-else
-    runPython=1;
-    assert(logical(exist(baseQueryFile,'file')),'QueryTools:fileNotFound',['Error in AuditQuery: cannot find the base query file ',baseQueryFile]);
 end
 
-
-%%
 if runPython
+    assert(logical(exist(baseQueryFile,'file')),'QueryTools:fileNotFound',['Error in AuditQuery: cannot find the base query file ',baseQueryFile]);
+    
     %% Edit the base query
-    %read in base query
+    %read in base query (put it all in a single line)
     fid = fopen(baseQueryFile);
     baseQuery = '';
     line = fgetl(fid);
@@ -161,7 +161,7 @@ if runPython
     cd(pythonDir)
     commandwindow();
     disp(' ')
-    disp('-----RUNNING flexibleQuery.py-----')
+    disp('---------flexibleQuery.py---------')
     system(['python flexibleQuery.py ',newQueryFile,' ',resultsDir]); %MATLAB command line will display prompts for MRIC username/password
     disp('----------------------------------')
     cd(origDir)
@@ -174,15 +174,16 @@ if runPython
 end
 
 %% Read in queries, do some formatting
-%only reprocess if necessary (if query was run OR matfile doesn't exist)
-cd(resultsDir)
-processQuery = 0;
-if runPython || ~exist([matFileName,'.mat'],'file')
-    processQuery = 1;
-else %otherwise, load in existing matfile and check for variables
+
+% only reprocess if necessary (i.e. if matfile doesn't exist or it doesn't
+% have the right variables saved in it)
+
+processQuery = 1;
+if exist(matFileName,'file')
     load(matFileName); %this will give fields and data
-    if ~exist('fields','var') || ~exist('data','var')
-        processQuery = 1;
+    if exist('fields','var') && exist('data','var')
+        processQuery = 0;
+        disp(['Matfile was found with the results name (',matFileName,'). Query was not reprocessed.']);
     end
 end
 
@@ -192,9 +193,7 @@ if processQuery
     [fields,data] = ReadInQuery(resultsFile);
 
     save(matFileName,'fields','data'); 
-    disp(['Processed results saved: ',matFileName,'.mat']);
-else
-    disp(['Matfile was found with the results name (',matFileName,'). Query was not reprocessed.']);
+    disp(['Processed results saved: ',matFileName]);
 end
 
 %%

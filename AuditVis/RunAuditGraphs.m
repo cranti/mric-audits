@@ -1,4 +1,4 @@
-function RunAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
+function RunAuditGraphs(dirToSave,graphTitle,fields,data,protocols,varargin)
 %RUNAUDITGRAPHS Visualize the results of a run table query of MRIC data,
 %written for monthly audits.
 %   RunAuditGraphs(dirToSave,graphTitle,fields,data) creates a series of
@@ -12,6 +12,9 @@ function RunAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
 %   fields (cell) -- column headers that correspond to the columns of data.
 %   data (cell) -- each row corresponds to a row of the database query.
 %   protocols (cell) -- applies a filter to the data only
+%
+% Optional
+%   'verbose'   1 or 0 -- if false, limits the number of messages printed
 %
 %GRAPHS SAVED (numbering continued from SESSIONAUDITGRAPHS.M)
 %    4a Average viewing time/session VS time -- w/ error bars
@@ -81,7 +84,22 @@ assert(sum(statusCol)==1,'Error in RunAuditGraphs: there must be exactly one "St
 assert(sum(binAgeCol)==1,'Error in RunAuditGraphs: there must be exactly one "BinnedAge" column in FIELDS');
 assert(sum(weekStartCol)==1,'Error in RunAuditGraphs: there must be exactly one "WeekStart" column in FIELDS');
 
+%% Parse optional inputs
 
+%default verbosity = true
+verbose = 1;
+if ~isempty(varargin)
+    assert(mod(length(varargin),2)==0,'Optional inputs must be in name, value pairs (odd number of parameters passed in).');
+    for i = 1:2:length(varargin)
+        switch lower(varargin{i})
+            case 'verbose'
+                verbose = varargin{i+1};
+            otherwise
+                warning('Unidentified parameter name: %s',varargin{i});
+        end
+    end
+end
+    
 %% Select only the specified protocols
 if ~isempty(protocols)
     colNum=find(cellfun(@(x) ~isempty(strfind(x,'Protocol')),fields));
@@ -326,8 +344,9 @@ if ~exist('figs','dir')
 end
 movefile('*.fig','figs/');
 
-disp(' ')
-fprintf(['Run graphs saved in\n\t',dirToSave,'\n']);
-
+if verbose
+    disp(' ')
+    fprintf(['Run graphs saved in\n\t',dirToSave,'\n']);
+end
 %%
 cd(origDir)

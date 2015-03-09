@@ -1,12 +1,11 @@
 function weeklyCheck(startdate, enddate, visualize)
-%WEEKLYCHECK Runs ETL weekly audits on the MRIC database for a
-% specified date range and saves a csv summary. Also creates a 
-% series of graphs using ETLAuditGraphs.
+%WEEKLYCHECK Runs ETL audits on the MRIC database for a date range and
+% saves a csv summary. Also creates a series of graphs with ETLAuditGraphs.
 %
 % INPUTS:
-%       startdate (str) - Beginning of date range for the query (YYYY-MM-DD)
-%       enddate (str) - End of date range for the query (YYYY-MM-DD)
-%       visualize (1 or 0) - Default 1. If false, no graphs will be saved.
+%       startdate (str)     Beginning of date range for the query (YYYY-MM-DD)
+%       enddate (str)       End of date range for the query (YYYY-MM-DD)
+%       visualize (1 or 0)	Default 1. If false, no graphs will be saved.
 %
 % This script uses weeklyCheckQuery.py to run two queries for the date
 % range specified in the inputs and produces a summary of the data, to
@@ -43,23 +42,28 @@ function weeklyCheck(startdate, enddate, visualize)
 %     user will be asked whether they want to overwrite those files.
 %   > The script prints where results have been saved to the command line.
 %
-% See also READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC, ETLAUDITGRAPHS
+% See also ETLAUDITGRAPHS, READINQUERY, ADDBINNEDAGE, PROTOCOLLOGIC
 
 % POSSIBLE FUTURE EDITS
+%   > Figure out a better way to deal with neuroimaging repetitions
+%   > Print a more clear summary?
 %   > "Integrity of upload" audit
 %   > LIVE data audit?
 
 % Written by Carolyn Ranti 8.25.2014
-% CVAR 1.6.2015
+% CVAR 3.9.15
 
 %%
+dbclear if error
 home
-disp('----------------------------------------------------------------------------------------------------------')
-disp('                                           Running weeklyCheck.m                                          ')
+disp('------------------------------------------------------------------------------------------')
+disp('                              Running weeklyCheck.m                                       ')
+disp(' ');
 
 %% CHANGE FOR INITIAL SET UP: directories
 pythonDir = '/Users/etl/Desktop/GitCode/mric-audits/QueryTools';
 baseResultsDir = '/Users/etl/Desktop/DataQueries/WeeklyChecks/';
+auditServerDir = '/Volumes/UserScratchSpace/Audits/';
 
 %% Set up
 %add things to the path
@@ -74,54 +78,70 @@ addpath([basePathDir,'/AuditVis'],[basePathDir,'/QueryTools'])
 
 % file naming patterns:
 resultsDir = [baseResultsDir,startdate,'_',enddate,'/'];
+sessionFilename = [resultsDir,'session_',startdate,'_',enddate,'.csv'];
+phaseFilename = [resultsDir,'phase_',startdate,'_',enddate,'.csv'];
 weeklyCheckFile = [resultsDir,'Summary_',startdate,'_',enddate,'.csv'];
-matFileName = [startdate,'_',enddate,'.mat'];
+matFilename = [resultsDir,startdate,'_',enddate,'.mat'];
 
 %% parse input
 if nargin == 2
     visualize = 1;
 end
 
-%% Run query & process query output, if necessary
+%% Run query
 
-%if the query dir can't be found, runPython should be set to 1
-if ~exist(resultsDir,'dir')
-    runPython=1;
-    processData=1;
-else
-    %If the query dir already exists, do not run query again
+%If the query results already exists, do not run query again
+if exist(sessionFilename, 'file') && exist(phaseFilename, 'file') && exist(matFilename, 'file')
     disp(' ')
     disp('%%%%');
-    fprintf(['Looks like this query exists in the following directory:\n\t',resultsDir]);
-    runPython=strcmpi('y',input('\nWould you like to run it again and overwrite any existing files? (y/n): ','s'));
+    fprintf('Looks like the results for this query exist in the following directory:\n\t%s\n', resultsDir);
+    runPython = strcmpi('y',input('Would you like to run it again and overwrite any existing files? (y/n): ','s'));
     disp('%%%%');
     disp(' ');
-    
-    cd(resultsDir)
-    if runPython || ~exist(matFileName,'file')
-        processData = 1;
-    else %otherwise, load in existing matfile and check for variables
-        processData = 0;
-        load(matFileName); %this will give fields and data
-        if ~exist('fields','var') || exist('data','var')
-            processData = 1;
-        end
-    end
+else
+    runPython = 1;
 end
 
 %Run the query
 if runPython
+    disp('!! Careful typing in your username and password -- you cannot use backspace');
     cd(pythonDir)
     system(['python weeklyCheckQuery.py ',startdate,' ',enddate]); %MATLAB command line will prompt user to enter database username and password
+    
+    % give the users one more chance to enter their username/password
+    if ~exist(sessionFilename, 'file') || ~exist(phaseFilename, 'file')
+       disp(' ');
+       disp('The query was unsuccessful -- try again');
+       system(['python weeklyCheckQuery.py ',startdate,' ',enddate]); 
+       if ~exist(sessionFilename, 'file') || ~exist(phaseFilename, 'file')
+           error('Cannot find the results from the query');
+       end
+    end
+    
+    queryRunDate = datestr(now);
+else
+    %date the query was run --> set as modification date for the folder
+    d = dir(resultsDir);
+    queryRunDate = d(1).date;
 end
 
-%process query output (~runPython & processData)
-%or load already processed query output (~runPython & ~processData)
-if processData || runPython
+%% Process output
+
+%default: process data
+processData = 1;
+
+if exist(matFilename, 'file')
+    load(matFilename); %this will give fields and data
+    if exist('fields','var') && exist('data','var')
+        processData = 0;
+    end
+end
+
+%process query output (processData)
+if processData
     cd(origDir)
     
     %read in session query
-    sessionFilename = [resultsDir,'session_',startdate,'_',enddate,'.csv'];
     [sessionFields,sessionData] = ReadInQuery(sessionFilename);
     %do a little processing
     monthAgeCol=strncmpi('Age',sessionFields,3);
@@ -131,19 +151,12 @@ if processData || runPython
     [sAllProtocols,sProtLogic] = ProtocolLogic(sessionData,protCol);
     
     %read in phase query
-    phaseFilename = [resultsDir,'phase_',startdate,'_',enddate,'.csv'];
     [phaseFields,phaseData] = ReadInQuery(phaseFilename);
     
     cd(resultsDir)
     save([startdate,'_',enddate],'sessionFields','sessionData','phaseFields','phaseData','sAllProtocols','sProtLogic');
-else
-    cd(resultsDir)
-    load([startdate,'_',enddate])
 end
 
-%date the query was run --> set as modification date for the folder
-d = dir(resultsDir);
-queryRunDate = d(1).date;
 
 
 %% Find column indices
@@ -161,57 +174,60 @@ pPhaseCol=find(strcmpi('Phase',phaseFields));
 pReqCol=find(strcmpi('Requirement',phaseFields));
 pStatusCol=find(strcmpi('Status',phaseFields));
 pProtCol=find(strcmpi('Protocol',phaseFields));
-%pFullDateCol=find(strcmpi('FulfillmentDate',phaseFields));
-
 
 
 %% Change the queries a little bit
-% 1. Take out all wash u and forsyth from session and phase tables
-sWashuProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'wash')),sAllProtocols)),2));
-sessionData=sessionData(~sWashuProtLogic,:);
-sProtLogic=sProtLogic(~sWashuProtLogic,:);
 
-pWashuProtLogic=cellfun(@(x) ~isempty(strfind(x,'wash')),phaseData(:,pProtCol));
-phaseData=phaseData(~pWashuProtLogic,:);
+% 1. Take out all wash u and forsyth 
+%session results
+sWashuProtLogic = logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'wash')),sAllProtocols)),2));
+sessionData = sessionData(~sWashuProtLogic,:);
+sProtLogic = sProtLogic(~sWashuProtLogic,:);
 
-sForsythProtLogic=logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'forsyth')),sAllProtocols)),2));
-sessionData=sessionData(~sForsythProtLogic,:);
-sProtLogic=sProtLogic(~sForsythProtLogic,:);
+sForsythProtLogic = logical(sum(sProtLogic(:,cellfun(@(x) ~isempty(strfind(x,'forsyth')),sAllProtocols)),2));
+sessionData = sessionData(~sForsythProtLogic,:);
+sProtLogic = sProtLogic(~sForsythProtLogic,:);
+
+%phase results
+pWashuProtLogic = cellfun(@(x) ~isempty(strfind(x,'wash')),phaseData(:,pProtCol));
+phaseData = phaseData(~pWashuProtLogic,:);
 
 pForsythProtLogic=cellfun(@(x) ~isempty(strfind(x,'forsyth')),phaseData(:,pProtCol));
 phaseData=phaseData(~pForsythProtLogic,:);
 
+
 % 2. if the MATLAB ID is empty, copy the individual id over (as a string)
 for i = 1:size(phaseData,1)
     if isempty(phaseData{i,pMatIDCol})
-        phaseData{i,pMatIDCol}=num2str(phaseData{i,pIDCol});
+        phaseData{i,pMatIDCol} = num2str(phaseData{i,pIDCol});
     end
 end
 
 % 3. Take out anyone who doesn't have an eye-tracking session as a requirement
-ETfilter=cellfun(@(x) ~isempty(strfind(x,'Tracking')),phaseData(:,pReqCol));
-eyetrackedFilter=ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)) &... %only matlab ids that were eye-tracked
+ETfilter = cellfun(@(x) ~isempty(strfind(x,'Tracking')),phaseData(:,pReqCol));
+eyetrackedFilter = ismember(phaseData(:,pMatIDCol),phaseData(ETfilter,pMatIDCol)) &... %only matlab ids that were eye-tracked
     ismember(phaseData(:,pProtCol),phaseData(ETfilter,pProtCol)); %only eye-tracking protocols %EDIT - check that this works
-phaseData=phaseData(eyetrackedFilter,:);
+phaseData = phaseData(eyetrackedFilter,:);
 
 
 %% Summary of sessions
-cd(resultsDir)
-if exist(weeklyCheckFile,'file') && ~runPython
-    disp(' ');
-    disp('%%%%');
-    fprintf(['A summary for this date range already exists in the following location:\n\t',weeklyCheckFile]);
-    overwriteFile=strcmpi('y',input('\nDo you want to overwrite the file? (y/n): ','s'));
-    disp('%%%%');
-    disp(' ');
-else
-    overwriteFile = 1;
-end
+
+% if exist(weeklyCheckFile,'file') && ~runPython
+%     disp(' ');
+%     disp('%%%%');
+%     fprintf(['A summary for this date range already exists in the following location:\n\t',weeklyCheckFile]);
+%     overwriteFile=strcmpi('y',input('\nDo you want to overwrite the file? (y/n): ','s'));
+%     disp('%%%%');
+%     disp(' ');
+% else
+%     overwriteFile = 1;
+% end
+overwriteFile = 1;
 
 if overwriteFile
     
     %% Open summary file, print header info
-    fid=fopen(weeklyCheckFile,'w+');
+    fid = fopen(weeklyCheckFile,'w+');
     fprintf(fid,'Query run on: %s\n\n',queryRunDate);
     fprintf(fid,'Start date:,%s\n',startdate);
     fprintf(fid,'End date:,%s\n',enddate);
@@ -268,14 +284,14 @@ if overwriteFile
     
     %output is phaseCheck - first column is IDs (MATLAB ID if it exists,
     %individual otherwise). One row per ID...
-    pUnqPeople=unique(phaseData(:,pMatIDCol));
+    pUnqPeople = unique(phaseData(:,pMatIDCol));
     phaseCheck(:,1) = pUnqPeople;
     
     %Next cols:
     %  2. Eye-tracking not phase edited (insert specific phase, otherwise empty)
     %  3. # sessions not uploaded
-    %  4. All phases in phase query
-    %  5. Binned ages in session query
+    %  4. List of all phases in phase query
+    %  5. List of all binned ages in session query
     
     for i=1:length(pUnqPeople)
         person = pUnqPeople(i);
@@ -288,15 +304,16 @@ if overwriteFile
             pPersonCol = pMatIDCol;
         end
         
+        %just this person's data
         tempPhase = phaseData(strcmpi(person,phaseData(:,pPersonCol)),:);
         tempSess = sessionData(strcmpi(person,sessionData(:,sPersonCol)),:);
         
         %filter for eyetracking phases:
-        tempETFilter=cellfun(@(x) ~isempty(strfind(x,'Tracking')),tempPhase(:,pReqCol));
+        tempETFilter = cellfun(@(x) ~isempty(strfind(x,'Tracking')),tempPhase(:,pReqCol));
         
         % ET phases that weren't started
-        notPhaseEdited=cellfun(@(x) strcmpi('not-started',x),tempPhase(:,pStatusCol));
-        phaseCheck{i,2}=strjoin(tempPhase(notPhaseEdited&tempETFilter,pPhaseCol)');
+        notPhaseEdited = cellfun(@(x) strcmpi('not-started',x),tempPhase(:,pStatusCol));
+        phaseCheck{i,2} = strjoin(tempPhase(notPhaseEdited&tempETFilter,pPhaseCol)');
         
         %# of sessions not uploaded = (# eye-tracking requirements in phase query) - (occurences in session query)
         phaseCheck{i,3} = sum(tempETFilter)-size(tempSess,1);
@@ -391,30 +408,50 @@ if overwriteFile
     %%
     fclose(fid);
     fprintf(['Summary saved in:\n\t',weeklyCheckFile,'\n']);
-    disp(' ');
-    disp('---------------------------------------------------Done---------------------------------------------------')
     
-else
-    disp('---------------------------------------------------Done---------------------------------------------------')
 end
 
 cd(origDir)
 
+disp(' ');
+disp('-------------------------------------------Done-------------------------------------------')
+
+
 %% Create audit graphs for the last 12 weeks:
 if visualize
+    
     %find the start of the last week (monday before enddate):
     lastWeekStart = datenum(enddate);
     n = 0;
     while ~strcmpi(datestr(lastWeekStart,'ddd'),'mon') && n<7
-    lastWeekStart=lastWeekStart-1;
-    n = n+1; %limit to 7 iterations
+        lastWeekStart=lastWeekStart-1;
+        n = n+1; %limit to 7 iterations
     end
 
     %subtract 11 weeks from that date
     graphStart = datestr(datenum(lastWeekStart) - 77,'yyyy-mm-dd');
 
     % create the audit graphs for the last 12 weeks from the end date
-    ETLAuditGraphs(graphStart, enddate, 0); %last input = don't run unfiltered query
-end
+    ETLAuditGraphs(graphStart, enddate, 'unfilteredQs', 0,'verbose', 0); % don't run unfiltered queries, don't print lots of messages
 
-rmpath([basePathDir,'/AuditVis'],[basePathDir,'/QueryTools'])
+    
+    % Copy folder to server
+    if ~isdir(auditServerDir)
+         input('/Volumes/UserScratchSpace could not be found. Mount the server now, and then press enter.','s')
+         if ~isdir(auditServerDir)
+             disp('Server could not be found. Exiting.')
+             return
+         end
+    end    
+
+    try
+        system(sprintf('cp -r %s %s',resultsDir,auditServerDir));
+        %TODO - this is kind of a hacky solution, think of something better
+        fid = fopen([auditServerDir,'CurrentDateRange.txt'],'w');
+        fprintf(fid,'%s to %s',graphStart,enddate);
+        fclose(fid);
+    catch 
+        disp('Could not copy the audit graphs to the server. Only saved on this computer.');
+    end
+
+end

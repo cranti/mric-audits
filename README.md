@@ -18,7 +18,10 @@ that it matches MRIC.
     - Defaults in ETLAuditGraphs.m 
     - pythonDir and defaults in AuditQuery.m 
     - pythonDir and baseResultsDir in weeklyCheck.m
++ Make sure simplejson module has been installed, or that the package is saved in 
+QueryTools/
 + (Optional) Use testQueryTools.m to validate scripts in QueryTools/
+
 
 **To make this script compatible with MATLAB2012:**
 + Replace strsplit with strsplit\_CR in ReadInQuery.m and AuditQuery.m 

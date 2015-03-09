@@ -1,4 +1,4 @@
-function SessionAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
+function SessionAuditGraphs(dirToSave,graphTitle,fields,data,protocols, varargin)
 %SESSIONAUDITGRAPHS Visualize the results of a session table query of eye
 %tracking data from MRIC, written for monthly audits.
 %   SessionAuditGraphs(dirToSave,graphTitle,fields,data) creates a series
@@ -12,6 +12,9 @@ function SessionAuditGraphs(dirToSave,graphTitle,fields,data,protocols)
 %   fields (cell) -- column headers that correspond to the columns of data.
 %   data (cell) -- each row corresponds to a row of the database query.
 %   protocols (cell) -- applies a filter to the data only
+%
+% Optional
+%   'verbose'   1 or 0 -- if false, limits the number of messages printed
 %
 %GRAPHS SAVED
 %   1a. # Successful sessions VS rounded age
@@ -72,6 +75,23 @@ assert(sum(qualCol)==1,'Error in SessionAuditGraphs: there must be exactly one "
 assert(sum(binAgeCol)==1,'Error in SessionAuditGraphs: there must be exactly one "BinnedAge" column in FIELDS');
 assert(sum(weekStartCol)==1,'Error in SessionAuditGraphs: there must be exactly one "WeekStart" column in FIELDS');
 
+
+%% Parse optional inputs
+
+%default verbosity = true
+verbose = 1;
+if ~isempty(varargin)
+    assert(mod(length(varargin),2)==0,'Optional inputs must be in name, value pairs (odd number of parameters passed in).');
+    for i = 1:2:length(varargin)
+        switch lower(varargin{i})
+            case 'verbose'
+                verbose = varargin{i+1};
+            otherwise
+                warning('Unidentified parameter name: %s',varargin{i});
+        end
+    end
+end
+    
 
 %% Select only the specified protocols
 if ~isempty(protocols)
@@ -311,8 +331,10 @@ if ~exist('figs','dir')
 end
 movefile('*.fig','figs/');
 
-disp(' ')
-fprintf(['Session graphs saved in\n\t',dirToSave,'\n']);
+if verbose
+    disp(' ')
+    fprintf(['Session graphs saved in\n\t',dirToSave,'\n']);
+end
 
 %% Print quality summary table to a csv file
 qualTable(weekStarts,qualities,'QualitySummary.csv');

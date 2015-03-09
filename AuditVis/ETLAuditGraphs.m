@@ -1,4 +1,4 @@
-function ETLAuditGraphs(startdate,enddate,doUnf)
+function ETLAuditGraphs(startdate,enddate,varargin)
 %ETLAuditGraphs - Audit eye-tracking data in MRIC and visualize the
 %results.
 % 
@@ -9,6 +9,13 @@ function ETLAuditGraphs(startdate,enddate,doUnf)
 %               table).
 %           ETLAuditGraphs() -- only runs the session table query that is
 %               unfiltered by date range.
+%
+% Optional parameters:
+%   'unfilteredQs'  1 or 0 -- run unfiltered queries (currently just
+%                   Session table)
+%   'verbose'       1 or 0 -- if 0, only a few messages are printed to the
+%                   command line (passed to RunAuditGraphs and
+%                   SessionAuditGraphs)
 %
 % Runs queries on the session table and the run table, and calls functions
 % to visualize the results.
@@ -35,17 +42,20 @@ function ETLAuditGraphs(startdate,enddate,doUnf)
 % > Run query -- get around the limit to the number of rows returned
 
 % Written by Carolyn Ranti 8.18.2014
-% CVAR 1.5.15
-
+% CVAR 3.9.15
 %%
+dbclear if error
 home
-disp('*** ETLAuditGraphs ***')
+disp('------------------------------------------------------------------------------------------')
+disp('                                 Running ETLAuditGraphs.m                                 ')
+
+finalWarnings = {};
 
 %% CHANGE FOR INITIAL SET UP: directories and a loop to go through all protocol types
 baseQueryDir = '/Users/etl/Desktop/DataQueries/BaseQueries/'; % where base queries are saved
 mainResultsDir = '/Users/etl/Desktop/DataQueries/Graphs/'; % subdirectories will be created (named by date)
 
-%TODO - save this in a mat file
+% This should be updated/checked periodically
 field_names = {'dir', 'title', 'protocol'};
 setup_loop = {'AllInfants', 'All Infant Protocols', {'ace-center-2012.eye-tracking-0-36m-2012-11';'infant-sibs.infant-sibs-high-risk-2011-12';'infant-sibs.infant-sibs-low-risk-2011-12'};
             'AllToddlers', 'All Toddler Protocols', {'toddler.toddler-asd-dd-2011-07','toddler.toddler-asd-dd-2012-11','toddler.toddler-td-2011-07','wash-u.toddler-twin-longitudinal-nontwinsib-2013-06','wash-u.toddler-twin-longitudinal-twinsib-2013-06'};
@@ -63,6 +73,41 @@ setup_loop = {'AllInfants', 'All Infant Protocols', {'ace-center-2012.eye-tracki
 };
 graphLoop = cell2struct(setup_loop, field_names, 2);
 
+%% parse inputs (verbosity, select which queries to run)
+
+%default verbosity is on
+verbose = 1;
+
+%default is to do 'em all
+doSessionQuery = 1; 
+doRunQuery = 1;
+doUnfSessionQuery = 1;
+doUnfRunQuery = 1;
+
+if ~isempty(varargin)
+    assert(mod(length(varargin),2)==0,'Optional inputs must be in name, value pairs (odd number of parameters passed in).');
+    for i = 1:2:length(varargin)
+        switch lower(varargin{i})
+            case 'unfilteredqs'
+                temp = varargin{i+1};
+                assert(temp==1 || temp==0, 'unfilteredQs must be either 1 or 0');
+                doUnfSessionQuery = temp;
+                doUnfRunQuery = temp;
+            case 'verbose'
+                verbose = varargin{i+1};
+            otherwise
+                warning('Unidentified parameter name: %s',varargin{i});
+        end
+    end
+end
+
+if nargin==0
+    disp(' ');
+    disp('No dates entered -- only running unfiltered.');
+    disp(' ');
+    doSessionQuery = 0;
+    doRunQuery = 0;
+end
             
 %% Add things to the path
 origDir = pwd;
@@ -74,123 +119,136 @@ cd ..
 basePathDir = pwd;
 addpath([basePathDir,'/AuditVis'],[basePathDir,'/QueryTools'])
 
-
-%% Select which queries to run
-
-%default is to do 'em all
-doSessionQuery = 1; 
-doRunQuery = 1;
-doUnfSessionQuery = 1;
-doUnfRunQuery = 1;
-
-if nargin==0
-    disp(' ');
-    disp('No dates entered -- only running unfiltered.');
-    disp(' ');
-    doSessionQuery = 0;
-    doRunQuery = 0;
-    
-elseif nargin==3
-    doUnfSessionQuery = doUnf;
-%     doUnfRunQuery = doUnf;
-end
-
-
 %% 
-disp('Let''s visualize some data!')
-disp([' ** NOTE: You''ll be prompted to log in to MRIC ',num2str(sum([doSessionQuery,doRunQuery,doUnfSessionQuery,doUnfRunQuery])),' time(s).']);
+sprintf(' ** NOTE: You''ll be prompted to log in to MRIC %i time(s).\n', sum([doSessionQuery,doRunQuery,doUnfSessionQuery,doUnfRunQuery]));
+disp('!! Careful typing in your username and password -- you cannot use backspace');
 disp(' ');
 
 
 %% Session query
-
 resultsDir = [mainResultsDir,startdate,'_',enddate,'/'];
 textResultsDir = [resultsDir, 'files/'];
 
+
 if doSessionQuery
-    
-    %QUERY MRIC
-    baseQueryFile = [baseQueryDir,'sessionQuery.txt'];
-    [fields,data] = AuditQuery(textResultsDir, baseQueryFile, startdate, enddate);
-    
-    % Add binned ages column
-    ageCol = strncmpi('Age',fields,3);
-    [fields,data] = AddBinnedAge(fields,data,ageCol);
-    % Add week start column
-    dateCol = strcmpi('Date',fields);
-    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
-    
-    for ii=1:length(graphLoop)
-        dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
-        if ~exist(dirToSaveGraphs,'dir')
-            mkdir(dirToSaveGraphs)
+   try 
+        %QUERY MRIC
+        baseQueryFile = [baseQueryDir,'sessionQuery.txt'];
+        try
+            [fields,data] = AuditQuery(textResultsDir, baseQueryFile, startdate, enddate);
+        catch
+            disp(' ');
+            disp('The query was unsuccessful -- try again');
+            %if this fails again, it will be caught by the bigger try/catch
+            [fields,data] = AuditQuery(textResultsDir, baseQueryFile, startdate, enddate); 
+        end
+        
+        % Add binned ages column
+        ageCol = strncmpi('Age',fields,3);
+        [fields,data] = AddBinnedAge(fields,data,ageCol);
+        % Add week start column
+        dateCol = strcmpi('Date',fields);
+        [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+
+        for ii=1:length(graphLoop)
+            dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
+            if ~exist(dirToSaveGraphs,'dir')
+                mkdir(dirToSaveGraphs)
+            end
+
+            SessionAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol, 'verbose', verbose);
+            close all
         end
 
-        SessionAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
-        close all
-    end
-    
-    cd(origDir)
+        cd(origDir)
+   catch
+       finalWarnings{end+1} = 'Date-filtered session query failed.';
+   end
 end
 
-
 %% Run query
+
 if doRunQuery
-    baseQueryFile=[baseQueryDir,'runQuery.txt']; 
-    
-    [fields,data] = AuditQuery(textResultsDir,baseQueryFile,startdate,enddate);
-    % Add binned ages column
-    ageCol = strncmpi('Age',fields,3);
-    [fields,data] = AddBinnedAge(fields,data,ageCol);
-    % Add week start column
-    dateCol = strcmpi('Date',fields);
-    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
-    
-    for ii=1:length(graphLoop)
-        dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
-        if ~exist(dirToSaveGraphs,'dir')
-            mkdir(dirToSaveGraphs)
+    try
+        baseQueryFile=[baseQueryDir,'runQuery.txt']; 
+
+        try
+            [fields,data] = AuditQuery(textResultsDir, baseQueryFile, startdate, enddate);
+        catch
+            disp(' ');
+            disp('The query was unsuccessful -- try again');
+            %if this fails again, it will be caught by the bigger try/catch
+            [fields,data] = AuditQuery(textResultsDir, baseQueryFile, startdate, enddate);  
+        end
+        
+        % Add binned ages column
+        ageCol = strncmpi('Age',fields,3);
+        [fields,data] = AddBinnedAge(fields,data,ageCol);
+        % Add week start column
+        dateCol = strcmpi('Date',fields);
+        [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
+
+        for ii=1:length(graphLoop)
+            dirToSaveGraphs=[resultsDir,graphLoop(ii).dir];
+            if ~exist(dirToSaveGraphs,'dir')
+                mkdir(dirToSaveGraphs)
+            end
+
+            RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol, 'verbose', verbose);
+            close all
         end
 
-        RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
-        close all
+        cd(origDir)
+    catch
+       finalWarnings{end+1} = 'Date-filtered run query failed.';
     end
-    
-    cd(origDir)
 end
 
 
 %% Session query for ENTIRE session table
 
+
 UNFresultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
 UNFtextResultsDir = [UNFresultsDir,'/files/'];
 
 if doUnfSessionQuery
-    baseQueryFile=[baseQueryDir,'sessionQuery_noFilters.txt']; 
-    
-    [fields,data] = AuditQuery(UNFtextResultsDir,baseQueryFile);
-    % Add binned ages column
-    ageCol = strncmpi('Age',fields,3);
-    [fields,data] = AddBinnedAge(fields,data,ageCol);
-    % Add week start column
-    dateCol = strcmpi('Date',fields);
-    [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
-    
-    
-    for ii=1:length(graphLoop)
-        dirToSaveGraphs=[UNFresultsDir,graphLoop(ii).dir];
-        if ~exist(dirToSaveGraphs,'dir')
-            mkdir(dirToSaveGraphs)
+    try
+        baseQueryFile=[baseQueryDir,'sessionQuery_noFilters.txt']; 
+        try
+            [fields,data] = AuditQuery(UNFtextResultsDir,baseQueryFile);
+        catch
+            disp(' ');
+            disp('The query was unsuccessful -- try again');
+            %if this fails again, it will be caught by the bigger try/catch
+            [fields,data] = AuditQuery(UNFtextResultsDir,baseQueryFile);
         end
+        
+        % Add binned ages column
+        ageCol = strncmpi('Age',fields,3);
+        [fields,data] = AddBinnedAge(fields,data,ageCol);
+        
+        % Add week start column
+        dateCol = strcmpi('Date',fields);
+        [fields,data] = AddWeekStart(fields,data,dateCol,'Mon');
 
-        SessionAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
+
+        for ii=1:length(graphLoop)
+            dirToSaveGraphs=[UNFresultsDir,graphLoop(ii).dir];
+            if ~exist(dirToSaveGraphs,'dir')
+                mkdir(dirToSaveGraphs)
+            end
+
+            SessionAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol, 'verbose', verbose);
+            close all
+        end
+        cd(origDir)
+    catch
+       finalWarnings{end+1} = 'Unfiltered session query failed.';
     end
-    close all
-    cd(origDir)
 end
 
 
-%% Run query for ENTIRE run table - TODO (not currently working)
+%% Run query for ENTIRE run table - TODO (not currently working). Also, not up-to-date with try/catch, etc
 % if doUnfRunQuery
 %     baseQueryFile = [baseQueryDir,'runQuery_noFilters.txt']; 
 %     resultsDir = [mainResultsDir,'SessionsUpTo',datestr(today,'yyyy-mm-dd'),'/'];
@@ -209,11 +267,15 @@ end
 %             mkdir(dirToSaveGraphs)
 %         end
 % 
-%         RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol);
+%         RunAuditGraphs(dirToSaveGraphs,graphLoop(ii).title,fields,data,graphLoop(ii).protocol, 'verbose', verbose);
 %     end
 %     close all
 %     cd(origDir)
 % end
 
-%% Remove extra things from path
-rmpath([basePathDir,'/AuditVis'], [basePathDir,'/QueryTools'])
+disp(' ');
+for w = 1:length(finalWarnings)
+    warning(finalWarnings{w})
+end
+
+disp('------------------------------------------Done--------------------------------------------')
